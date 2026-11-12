@@ -24,6 +24,22 @@ test('images preserve NASA metadata and cache a successful response', async () =
   assert.deepEqual(cached.items, result.items);
 });
 
+test('force refresh bypasses a fresh cache but keeps it as an outage fallback', async () => {
+  const storage = memory();
+  await loadImages({ fetcher: response(imagePayload()), storage });
+  let calls = 0;
+  const refreshed = await loadImages({ forceRefresh: true, storage, fetcher: async () => {
+    calls += 1;
+    return response(imagePayload('https://images-assets.nasa.gov/image/NEW/NEW~thumb.jpg'))();
+  } });
+  assert.equal(calls, 1);
+  assert.equal(refreshed.status, 'live');
+  assert.match(refreshed.items[0].url, /NEW/);
+  const fallback = await loadImages({ forceRefresh: true, storage, fetcher: async () => { throw Error('offline'); } });
+  assert.equal(fallback.status, 'stale');
+  assert.match(fallback.items[0].url, /NEW/);
+});
+
 test('PDS parses real response structure and rejects records unrelated to Titan', async () => {
   const result = await loadDatasets({ fetcher: response(datasetPayload), storage: null });
   assert.equal(result.status, 'live');

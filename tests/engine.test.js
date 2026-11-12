@@ -78,11 +78,11 @@ test('landing alone is partial success and repeat observations cannot farm point
   assert.equal(collectScience(m,'radar').ok,false);assert.equal(finishMission(m).success,false);
 });
 test('poor entry and battery depletion yield explained failure',()=>{
-  const failed=land(newMission(),['correct','sleep','steep','safe','stabilize']);assert.equal(failed.stage,'results');assert.equal(failed.result.success,false);
+  const failed=land(newMission(),['correct','sleep','steep','safe','stabilize']);assert.equal(failed.stage,'results');assert.equal(failed.result.success,false);assert.match(failed.result.reason,/heating.*heat shield/i);
   const m=newMission();beginFlight(m);m.stage='flight';advanceFlight(m,'correct');m.flight.energy=100;advanceFlight(m,'survey');assert.equal(m.stage,'results');assert.match(m.result.reason,/battery/);
 });
 test('high wind punishes drifting in a narrow hull, but stabilizers save it',()=>{
-  const m=newMission('explorer','kraken');const failed=land(m,['correct','sleep','gentle','safe','drift']);assert.equal(failed.result.success,false);
+  const m=newMission('explorer','kraken');const failed=land(m,['correct','sleep','gentle','safe','drift']);assert.equal(failed.result.success,false);assert.match(failed.result.reason,/stable.*waves|wider hull/i);
   const safe=land(newMission('explorer','kraken'));assert.equal(safe.stage,'explore');
 });
 test('surface time, transmission and recharging have meaningful limits',()=>{

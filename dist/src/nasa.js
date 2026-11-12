@@ -92,11 +92,11 @@ async function requestJson(fetcher, url, timeoutMs) {
 }
 
 async function load(kind, options = {}) {
-  const { fetcher = globalThis.fetch, storage = browserStorage(), timeoutMs = 8000, endpoint = PDS_ENDPOINT } = options;
+  const { fetcher = globalThis.fetch, storage = browserStorage(), timeoutMs = 8000, endpoint = PDS_ENDPOINT, forceRefresh = false } = options;
   const parse = kind === 'images' ? parseImages : parseDatasets;
   const key = `titan.nasa.${kind}.v1`;
   const cache = readCache(storage, key, parse);
-  if (cache && Date.now() - cache.at < DAY) {
+  if (!forceRefresh && cache && Date.now() - cache.at < DAY) {
     return { items: cache.items, status: 'cached', message: 'Saved NASA response · cached within the last 24 hours.' };
   }
   let reason;

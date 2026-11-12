@@ -133,7 +133,16 @@ export function advanceFlight(mission, choice) {
     if (!float.stable) { f.integrity -= 55; log('Waves overwhelmed the stability margin.', 'Physics simulation'); }
     f.landed = f.entry.safe && float.stable && f.integrity > 25 && f.energy > 0;
     f.float = float;
-    if (!f.landed) return finishMission(mission, 'The landing did not hold. Review your descent, hull stability and battery, then try again.');
+    if (!f.landed) {
+      let reason = 'The landing did not hold. Review the descent choices, then try again.';
+      if (f.entry.heatRatio > 1) reason = 'Atmospheric heating overwhelmed the heat shield. Try a gentle approach or stronger protection.';
+      else if (f.entry.torn) reason = 'The parachute opened while dynamic pressure was too high and tore. Wait for the safe deployment window.';
+      else if (f.entry.velocity > 4.5) reason = 'The explorer reached the lake too fast. Give the parachute more time to inflate and slow the craft.';
+      else if (!float.stable) reason = 'The hull could not stay stable in the waves. Use the stabilizers or choose a wider hull.';
+      else if (f.integrity <= 25) reason = 'The spacecraft reached the lake with too little structural integrity to continue.';
+      else if (f.energy <= 0) reason = 'The battery ran empty during splashdown. Reserve more energy for the landing system.';
+      return finishMission(mission, reason);
+    }
     mission.stage = 'explore'; log('Afloat on Titan. The lake laboratory is ready.', 'Physics simulation');
   }
   if (f.energy <= 0) return finishMission(mission, 'The battery ran empty during a critical operation. Use sleep mode or a larger power pack.');

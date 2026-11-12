@@ -4,7 +4,7 @@ Verified on 11 November 2026 using Node 24 and the Codex browser.
 
 ## Automated checks
 
-`npm test` runs 29 tests using the Node standard library. All passed. Covered:
+`npm test` runs 30 tests using the Node standard library. All passed. Covered:
 
 - Mass, budget, baseline/active power, all catalog selection paths and budget rejection.
 - Missing required parts, overweight craft, unsuitable science payload and power shortage.
@@ -14,6 +14,7 @@ Verified on 11 November 2026 using Node 24 and the Codex browser.
 - Full success, partial science, duplicate observation prevention, battery depletion and landing failure.
 - Surface time, transmit/recharge limits and a viable Architect solar strategy.
 - NASA success/cached/stale/error/timeout/429/invalid/empty results, explicit image type labels, hostile URL rejection, correct Titan target filtering and same-origin relay parsing.
+- Manual NASA refresh bypasses a fresh cache, while the cached response remains available if that live refresh fails.
 - Save/resume, unsupported/corrupt saves, archive deduplication and unavailable local storage.
 
 `node --check` passed for the application, simulation and server. `npm run build` creates a complete static output with no dependencies.
@@ -34,6 +35,14 @@ Verified on 11 November 2026 using Node 24 and the Codex browser.
 - NASA gallery displayed six real images and source links. The original direct PDS browser request showed the truthful curated fallback; the completed local `/api/pds` relay displayed six live Titan records.
 - Desktop 1440×1000 and phone 390×844 layouts inspected. Home and workshop had no horizontal page overflow at 390 px. A redundant destination overlay was removed on narrow phones after inspection.
 - Browser error log was empty during the tested mission flow. NASA CORS failures are caught and displayed as data-source status rather than game failures.
+
+## Debug pass · 12 November 2026
+
+- Re-ran the complete automated suite and production build.
+- Replayed an alternate solar-powered mission through launch and a deliberate high-heating failure; integrity dropped to 15% and the mission ended safely.
+- Fixed the final failure report so it names the actual cause and remedy for heat-shield, parachute, high-speed, stability, integrity and battery failures.
+- Fixed **Refresh NASA sources** so it performs a new request instead of immediately reusing the 24-hour cache. The refreshed view returned six live Image Library records and six live PDS records.
+- Rechecked browser console output; no warnings or errors were recorded.
 
 ## Reproduce a normal mission
 
