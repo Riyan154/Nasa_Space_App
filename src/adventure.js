@@ -4,15 +4,17 @@ import { COMPONENTS, DEFAULT_LOADOUT, missionTotals } from './builder-model.js';
 import { builderMarkup, renderBuilder } from './builder-view.js';
 import { read, write } from './storage.js';
 
+import { CRUISE_SECONDS, LANDING_SECONDS, arrival } from './titan-flight.js';
+
 const KEY='titan.adventure.v2';
 const chapters=['Build','Launch','Fly','Land','Explore'];
 const stageNumber={assemble:0,launch:1,cruise:2,landing:3,lake:4,done:4};
-const labels={assemble:'Build your buddy',launch:'Ready, set… space!',cruise:'Follow the golden rings',landing:'A soft landing',lake:'The lake of little wonders',done:'You did it, explorer!'};
+const labels={assemble:'Build your buddy',launch:'Ready, set… space!',cruise:'Past the rings of Saturn',landing:'A soft landing',lake:'The lake of little wonders',done:'You did it, explorer!'};
 export function adventureMarkup() {
   return `<main class="adventure" aria-label="Titan interactive game">
     <header class="game-top"><button class="game-logo" data-game="home" aria-label="Titan adventure home"><span class="logo-orbit">✦</span><span>TITAN<small>DEEP FRONTIER</small></span></button><div class="game-chapters" aria-label="Adventure chapters">${chapters.map((s,i)=>`<span data-chapter="${i}"><b>${i+1}</b>${s}</span>`).join('')}</div><nav><button data-game="journal" aria-label="Discovery journal">▤ <span>My discoveries</span><b id="journal-count">0/5</b></button><button data-game="science" aria-label="Real NASA pictures">◉ <span>NASA pictures</span></button><button data-game="pause" aria-label="Pause and settings">Ⅱ</button></nav></header>
     <div class="playfield"><canvas id="game-canvas" tabindex="0" aria-label="Game world. Use arrow keys or W A S D to move. Space does the current action. You can also tap a destination."></canvas>
-      <section id="welcome" class="game-welcome"><span class="tiny-label">A LITTLE ROBOT. A VERY BIG ADVENTURE.</span><h1>Big wonders.<br><em>Little explorer.</em></h1><p>Fly to Titan. Splash into a strange sea.<br>Help Pip discover what’s out there.</p><button class="play-button" data-game="play">Let’s play <span>▶</span></button><button class="continue-game" data-game="continue" hidden>Continue my adventure →</button><span class="welcome-note">Move. Explore. Discover. <b>Ages 6+</b></span><button class="grownup-link" data-game="workshop">Advanced spacecraft workshop ↗</button></section>
+      <section id="welcome" class="game-welcome"><span class="tiny-label">A LITTLE ROBOT. A VERY BIG ADVENTURE.</span><h1>Big wonders.<br><em>Little explorer.</em></h1><p>Fly to Titan. Splash into a strange sea.<br>Help Pip discover what’s out there.</p><button class="play-button" data-game="play">Let’s play <span>▶</span></button><button class="continue-game" data-game="continue" hidden>Continue my adventure →</button></section>
       <div id="game-heading" class="game-heading" hidden><span class="tiny-label" id="chapter-label"></span><h1 id="chapter-title"></h1><p id="instruction" role="status" aria-live="polite"></p></div>
       <div id="world-label" class="world-label"><span>YOUR DESTINATION</span><b>Ligeia Mare</b><small>A methane sea on Saturn’s moon</small></div>
       <div class="pip-tag" id="pip-tag"><b>Hi! I’m Pip.</b><span>Your curious little co-pilot</span></div>
@@ -34,9 +36,9 @@ export function mountAdventure(root, callbacks={}) {
   const popup=$('#adventure-popup');
   let saved=restoreAdventure(read(KEY,null)), state=saved?structuredClone(saved):freshAdventure();
   let home=true, w=1200,h=700,scale=1,raf=0,last=0,time=0,elapsed=0,saveTime=0,disposed=false;
-  let camera=0,playerX=.28,playerY=.56,ringX=1.1,ringY=.45,altitude=80000,chute=false;
+  let camera=0,filmTime=0;
   let progress=0,working=null,launching=false,launchTime=0,transmitting=false,target=null;
-  let particles=[],direction=1,keys=new Set(),held=new Map(),textCache={},audio=null,buildTab='power',deployment=1;
+  let particles=[],direction=1,keys=new Set(),held=new Map(),textCache={},audio=null,buildTab='rocket',deployment=1;
   let soundEnabled=read('titan.adventure.sound',false)===true;
   let reduced=callbacks.reducedMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const on=(node,event,fn)=>node.addEventListener(event,fn,{signal});
@@ -48,16 +50,16 @@ export function mountAdventure(root, callbacks={}) {
   function burst(x,y,color='#f4d17b',amount=22){for(let i=0;i<amount;i++)particles.push({x,y,vx:Math.cos(i*2.4)*(30+i%7*17),vy:Math.sin(i*2.4)*(40+i%5*20)-50,life:1.3,color});}
   function resize(){const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);w=rect.width;h=rect.height;scale=clamp(Math.min(w/1100,h/650),.65,1.2);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);c.setTransform(dpr,0,0,dpr,0,0);}
   const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
-  function resetRuntime(){progress=0;working=null;launching=false;launchTime=0;transmitting=false;playerX=.28;playerY=.53;ringX=1.05;ringY=[.43,.67,.48][state.rings]||.48;altitude=80000;chute=false;target=null;keys.clear();held.clear();particles=[];text('#game-toast','');$('#game-toast').classList.remove('visible');}
+  function resetRuntime(){progress=0;working=null;launching=false;launchTime=0;transmitting=false;filmTime=0;target=null;keys.clear();held.clear();particles=[];text('#game-toast','');$('#game-toast').classList.remove('visible');}
   function changeStage(stage){state.stage=stage;resetRuntime();persist();sync();ping(760);}
-  function start(resume){home=false;if(!resume){state=freshAdventure();}resetRuntime();persist();sync();canvas.focus({preventScroll:true});}
+  function start(resume){home=false;if(!resume){state=freshAdventure();buildTab='rocket';}resetRuntime();persist();sync();canvas.focus({preventScroll:true});}
   function sync(){
     const stage=state.stage;
     root.classList.toggle('at-home',home);root.dataset.stage=home?'home':stage;
     $('.adventure').dataset.stage=home?'home':stage;
     visible('#welcome',home);visible('#game-heading',!home);visible('#pip-tag',home);visible('#world-label',home);
     $('[data-game="continue"]').hidden=!saved;
-    visible('#mission-builder',!home&&stage==='assemble');visible('#game-controls',!home&&stage!=='assemble'&&stage!=='done');
+    visible('#mission-builder',!home&&stage==='assemble');visible('#game-controls',!home&&stage!=='assemble'&&stage!=='done'&&stage!=='landing');
     if(!home&&stage==='assemble')renderBuilder(root,state.loadout,buildTab);
     visible('#mini-map',!home&&stage==='lake');visible('#flight-meter',!home&&['launch','cruise','landing'].includes(stage));
     visible('#edit-spacecraft',!home&&stage==='launch');
@@ -73,8 +75,13 @@ export function mountAdventure(root, callbacks={}) {
     let instruction='',action='',disabled=false,meter='',amount=0;
     if(state.stage==='assemble')instruction='Swap a part. Watch Pip change. Make all three checks green!';
     if(state.stage==='launch'){instruction=launching?'Up, up and away!':'Hold the big button (or Space) to lift off!';action=launching?'Lifting off…':'Hold to launch ↑';disabled=launching;meter=launching?'LIFT OFF!':`ROCKET POWER ${Math.round(progress*100)}%`;amount=progress;$('#edit-spacecraft').disabled=launching;}
-    if(state.stage==='cruise'){instruction='Steer up and down. Fly through 3 golden rings!';action='↑ Fly up';meter=`NAVIGATION RINGS ${state.rings} / 3`;amount=state.rings/3;}
-    if(state.stage==='landing'){instruction=altitude>18000?'Steer toward the glowing landing spot.':!chute?'Open the parachute! Tap the big button.':'Keep Pip above the glowing landing spot.';action=chute?'Parachute open ✓':altitude>18000?'Wait for the green light…':'Open parachute!';disabled=chute||altitude>18000;meter=`${Math.max(0,Math.round(altitude/1000))} km · ${chute?'PARACHUTE OPEN':altitude>18000?'SLOWING DOWN':'SAFE TO OPEN'}`;amount=1-altitude/80000;}
+    if(state.stage==='cruise'){
+      instruction='Pip is tucked inside the cruise capsule.';action='Skip to Landing ⏭';
+      meter="INTERPLANETARY TRANSIT · Distance: 1.4 Billion km · 7-Year Hohmann Transfer Orbit · Cruising past Saturn’s Rings";amount=filmTime/CRUISE_SECONDS;
+    }
+    if(state.stage==='landing'){
+      instruction='Watch Pip arrive at the northern methane sea.';meter=arrival(filmTime).phase;amount=filmTime/LANDING_SECONDS;
+    }
     if(state.stage==='lake'){
       const near=nearbyDiscovery(state),next=DISCOVERIES.find(d=>!state.found.includes(d.id));
       instruction=state.sent?'All discoveries sent! Keep sailing or open your journal.':transmitting?'Sending your discoveries all the way to Earth…':working?DISCOVERIES.find(d=>d.id===working).tool:near?'You found a science spot! Tap the big button.':state.found.length===5?'Five discoveries! Send your science home.':`Follow the glowing marker. ${next?.label}!`;
@@ -83,16 +90,16 @@ export function mountAdventure(root, callbacks={}) {
       text('#map-caption',`${state.found.length} of 5 discoveries · Tap a dot for a helping hand`);
     }
     text('#instruction',instruction);text('#game-action',action);$('#game-action').disabled=disabled;
-    $('#game-action').classList.toggle('ready',state.stage==='landing'&&altitude<=18000&&!chute);
+    visible('#control-tip',state.stage==='lake');
     text('#meter-label',meter);$('#meter-fill').style.width=`${amount*100}%`;$('#action-fill').style.width=`${progress*100}%`;
-    const pad=$('.direction-pad');pad.hidden=!['cruise','landing','lake'].includes(state.stage);
+    const pad=$('.direction-pad');pad.hidden=state.stage!=='lake';
   }
   function showDialog(title,body){keys.clear();held.clear();target=null;popup.innerHTML=`<button class="dialog-x" data-game="close" aria-label="Close">×</button><h2 id="adventure-dialog-title">${title}</h2>${body}`;if(!popup.open)popup.showModal();}
   function closeDialog(){popup.close();if(state.stage==='done'){state.stage='lake';persist();sync();}canvas.focus({preventScroll:true});}
   function factCard(d){showDialog('New discovery!',`<div class="discovery-art" style="--discovery-color:${d.color}"><canvas id="fact-picture" width="420" height="180" aria-label="Illustration of ${d.title}"></canvas><span>✦ DISCOVERY ${state.found.length} / 5</span></div><h3>${d.title}</h3><p>${d.fact}</p><strong class="fact-value">${d.value}</strong><small class="fact-source">Real reference fact · <a href="${FACT_SOURCE}" target="_blank" rel="noopener">NASA Titan facts ↗</a><br>Pip’s sample collection is pretend play, not a measurement.</small><button class="play-button" data-game="close">${state.found.length===5?'Send my discoveries home':'Keep exploring'} →</button>`);const fc=$('#fact-picture').getContext('2d');fc.fillStyle=d.color;fc.globalAlpha=.12;fc.fillRect(0,0,420,180);fc.globalAlpha=1;for(let i=0;i<8;i++)star(fc,30+i*52,25+(i%3)*50,3,d.color);glyph(fc,d.symbol,210,83,96,d.color);ellipse(fc,210,148,69,8,'#233c3b15');}
   function journal(){showDialog('My discovery journal',`<p>Five little wonders. One extraordinary moon.</p><div class="sticker-grid">${DISCOVERIES.map(d=>`<button data-game="read-fact" data-id="${d.id}" ${state.found.includes(d.id)?'':'disabled'}><canvas width="90" height="80" data-sticker="${d.id}" aria-hidden="true"></canvas><b>${state.found.includes(d.id)?d.title:'Still a mystery'}</b></button>`).join('')}</div><button class="play-button" data-game="close">Back to Pip →</button>`);root.querySelectorAll('[data-sticker]').forEach(el=>{const d=DISCOVERIES.find(d=>d.id===el.dataset.sticker);glyph(el.getContext('2d'),d.symbol,45,38,38,state.found.includes(d.id)?d.color:'#999c8d');});}
   function pause(){showDialog(home?'Welcome, explorer!':'Take a little breather',`<p>${home?'A whole moon is waiting for you.':'Pip will wait right here. Your adventure is saved on this device.'}</p><div class="pause-options"><button data-game="sound">${soundEnabled?'♫ Sound on':'♪ Sound off'} — tap to change</button><button data-game="motion">${reduced?'Gentle animation on':'Gentle animation off'} — tap to change</button><button data-game="help">How to play</button></div><button class="play-button" data-game="close">${home?'Let’s go':'Keep playing'} ▶</button>`);}
-  function action(){if(home||popup.open)return;if(state.stage==='cruise'){playerY=clamp(playerY-.12,.28,.82);ping(400);}if(state.stage==='landing'&&altitude<=18000&&!chute){chute=true;burst(playerX*w,playerY*h);ping(520);updateHUD();}if(state.stage==='lake'&&!working&&!transmitting){if(state.sent){journal();}else if(state.found.length===5){transmitting=true;progress=0;ping(800);}else{const near=nearbyDiscovery(state);if(near){working=near.id;target=null;progress=0;ping(460);}}}}
+  function action(){if(home||popup.open)return;if(state.stage==='cruise'){changeStage('landing');return;}if(state.stage==='lake'&&!working&&!transmitting){if(state.sent){journal();}else if(state.found.length===5){transmitting=true;progress=0;ping(800);}else{const near=nearbyDiscovery(state);if(near){working=near.id;target=null;progress=0;ping(460);}}}}
   function ending(){showDialog('You’re a Titan explorer!',`<div class="ending-medal">✦</div><h3>Five wonders. All sent home.</h3><p>You built Pip, flew through space, made a soft landing and explored a methane sea!</p><div class="earned-badges"><span>✦ Space pilot</span><span>✦ Lake explorer</span><span>✦ Science buddy</span></div><button class="play-button" data-game="freeplay">Keep sailing →</button><button class="continue-game" data-game="journal">See my discoveries</button><button class="continue-game" data-game="restart">Start a new adventure</button>`);}
   on(root,'click',event=>{
     const el=event.target.closest('[data-game]');if(!el||el.disabled)return;const a=el.dataset.game;
@@ -107,7 +114,7 @@ export function mountAdventure(root, callbacks={}) {
     if(a==='pause')pause();
     if(a==='sound'){soundEnabled=!soundEnabled;write('titan.adventure.sound',soundEnabled);ping();pause();}
     if(a==='motion'){reduced=!reduced;write('titan.adventure.motion',reduced);pause();}
-    if(a==='help')showDialog('Let’s play!',`<ol class="simple-help"><li><b>Build:</b> Pick pictured parts. Keep mass and coins below the limits, and supply enough power. Then tap Ready for launch.</li><li><b>Launch:</b> Hold the launch button or Space.</li><li><b>Fly:</b> Move up and down through 3 rings.</li><li><b>Land:</b> Open the parachute when the button turns green.</li><li><b>Explore:</b> Sail to glowing markers. Tap to discover!</li></ol><p>All science spots are playable with every kit. Extra tools are pretend shared equipment. Use arrows, WASD, or the touch arrows. Tap the lake to sail there. There’s no timer or lost lives.</p><button class="play-button" data-game="close">Got it! →</button>`);
+    if(a==='help')showDialog('Let’s play!',`<ol class="simple-help"><li><b>Build:</b> Pick pictured parts. Keep mass and coins below the limits, and supply enough power. Then tap Ready for launch.</li><li><b>Launch:</b> Hold the launch button or Space.</li><li><b>Fly:</b> Watch Saturn pass by, or skip straight to landing.</li><li><b>Land:</b> Watch the shield glow and the parachute carry Pip to the lake.</li><li><b>Explore:</b> Sail to glowing markers. Tap to discover!</li></ol><p>All science spots are playable with every kit. Extra tools are pretend shared equipment. Use arrows, WASD, or the touch arrows. Tap the lake to sail there. There’s no timer or lost lives.</p><button class="play-button" data-game="close">Got it! →</button>`);
     if(a==='power-facts')showDialog('What powers a spacecraft?',`<p><b>Solar panels</b> turn sunlight into electricity. Small panels struggle far from the Sun.</p><p><b>Radioisotope generators</b> turn heat from radioactive decay into electricity, even in darkness.</p><p><b>Batteries</b> store energy and are useful for short missions or alongside a generator.</p><p class="fact-source">Our parts, masses, wattages and coins are illustrative game values. Battery time is an estimate, not a countdown.</p><a href="https://science.nasa.gov/learn/basics-of-space-flight/chapter11-3/" target="_blank" rel="noopener">Learn with NASA ↗</a><button class="play-button" data-game="close">Back to building →</button>`);
     if(!home&&state.stage==='assemble'){
       if(a==='build-tab'){buildTab=el.dataset.tab;renderBuilder(root,state.loadout,buildTab);}
@@ -130,7 +137,7 @@ export function mountAdventure(root, callbacks={}) {
     if(e.target.closest('#game-action')&&state.stage==='launch'){e.preventDefault();held.set(e.pointerId,'launch');e.target.setPointerCapture(e.pointerId);}
   }
   on(root,'pointerdown',pointerDown);on(root,'pointerup',e=>held.delete(e.pointerId));on(root,'pointercancel',e=>held.delete(e.pointerId));on(root,'lostpointercapture',e=>held.delete(e.pointerId));
-  on(canvas,'pointerdown',e=>{if(home||popup.open)return;const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(state.stage==='lake'&&!working){target={x:clamp(camera+x/scale,80,2700),y:clamp(y/h,.6,.9)};}if(state.stage==='cruise'||state.stage==='landing'){playerY=clamp(y/h,.28,.82);playerX=clamp(x/w,.12,.88);}canvas.focus({preventScroll:true});});
+  on(canvas,'pointerdown',e=>{if(home||popup.open)return;const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(state.stage==='lake'&&!working){target={x:clamp(camera+x/scale,80,2700),y:clamp(y/h,.6,.9)};}canvas.focus({preventScroll:true});});
   on(window,'keydown',e=>{if(home||document.querySelector('dialog[open]'))return;if(state.stage==='assemble'){if(e.key==='Escape')pause();return;}if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d','W','A','S','D',' '].includes(e.key)){
     // Preserve native Space/Enter activation on menu and dialog buttons.
     if(e.key===' '&&e.target instanceof HTMLButtonElement&&e.target.id!=='game-action')return;
@@ -147,24 +154,38 @@ export function mountAdventure(root, callbacks={}) {
       else{launchTime+=dt;if(launchTime>4.3)changeStage('cruise');}
     }
     if(state.stage==='cruise'){
-      playerY=clamp(playerY+dy*dt*.45,.27,.82);playerX=clamp(playerX+dx*dt*.3,.12,.5);ringX-=dt*.12;
-      if(Math.abs(ringX-playerX)*w<38*scale&&Math.abs(ringY-playerY)*h<65*scale){state.rings++;burst(playerX*w,playerY*h);ping(600+state.rings*100);persist();if(state.rings>=3){toast('Nice flying! Next stop: Titan.');changeStage('landing');}else{ringX=1.1;ringY=[.43,.67,.48][state.rings];}}
-      if(ringX<-.1){ringX=1.1;toast('Try that ring again. You’ve got this!');}
-    }
-    if(state.stage==='landing'){
-      playerX=clamp(playerX+dx*dt*.34,.12,.88);
-      if(altitude>18000)altitude=Math.max(18000,altitude-dt*8000);
-      else if(chute)altitude=Math.max(0,altitude-dt*2600);
-      playerY=.32+(1-altitude/80000)*.37;
-      if(altitude<=0){if(Math.abs(playerX-.62)<.13){state.x=180;state.y=.77;burst(playerX*w,h*.7,'#b5d7be',40);changeStage('lake');toast('Splash! Welcome to Titan. Let’s explore!');}else{altitude=100;toast('A little left or right. Aim for the glowing spot!');}}
+      filmTime+=dt;
+      if(filmTime>=CRUISE_SECONDS)changeStage('landing');
+    }else if(state.stage==='landing'){
+      filmTime+=dt;
+      if(filmTime>=LANDING_SECONDS){
+        state.x=180;state.y=.77;changeStage('lake');
+        toast("Splashdown confirmed! Welcome to Titan. Let's explore!");
+      }
     }
     if(state.stage==='lake'){
       if(!working&&!transmitting){if(dx||dy){moveExplorer(state,dx,dy,dt);direction=dx<0?-1:dx>0?1:direction;}else if(target){const diff=target.x-state.x,yd=(target.y-state.y)*850;if(Math.abs(diff)<7&&Math.abs(yd)<7)target=null;else{const distance=Math.hypot(diff,yd);moveExplorer(state,diff/distance,yd/distance,dt);direction=diff<0?-1:1;}}}
       if(working){progress+=dt*.37;if(progress>=1){const id=working;working=null;progress=0;if(collectDiscovery(state,id)){persist();sync();burst((state.x-camera)*scale,state.y*h);ping(900);factCard(DISCOVERIES.find(d=>d.id===id));}}}
-      if(transmitting){progress+=dt*.25;if(progress>=1){if(finishAdventure(state)){persist();sync();burst(w*.5,h*.4,'#eed087',60);ending();}transmitting=false;progress=0;}}
+      if(transmitting){const radio=COMPONENTS.radio.find(item=>item.id===state.loadout.radio);progress+=dt/(2+140/radio.rate);if(progress>=1){if(finishAdventure(state)){persist();sync();burst(w*.5,h*.4,'#eed087',60);ending();}transmitting=false;progress=0;}}
     }
     if(saveTime>1.5){saveTime=0;persist();}
     updateHUD();
+  }
+  function drawCapsule(x,y,bus){
+    c.save();c.translate(x,y);c.scale(scale,scale);
+    path(c,[[-49,8],[-17,-27],[16,-27],[49,8]],'#e7d4aa','#8b775c');ellipse(c,0,8,49,12,'#ab6854','#61463e');
+    for(let i=0;i<6;i++){const edge=-45+i*15;path(c,[[edge,7],[edge*.53,-22]],null,'#a58d63');ellipse(c,edge,9,1.5,1.3,'#d8c1a0');}
+    if(bus){
+      box(c,-26,-36,52,11,3,'#b9955d');
+      for(const side of [-1,1]){
+        box(c,side*40-18,-35,36,5,1,'#d9c395');box(c,side*62-16,-44,32,22,1,'#31516a','#b29f79');
+        for(let i=1;i<5;i++)path(c,[[side*62-16+i*6,-43],[side*62-16+i*6,-23]],null,'#87a1a2');
+        path(c,[[side*62-15,-33],[side*62+15,-33]],null,'#87a1a2');
+      }
+      path(c,[[10,-35],[14,-47]],null,'#ecd0a4');ellipse(c,13,-46,17,5,'#ead4ac','#967b57');
+      box(c,-22,-43,11,8,1,'#41494b','#c7b68d');
+    }
+    c.restore();
   }
   function builderPosition(){return {x:w<=900?w*.5:w*.5+25,y:w<=900?278:h*.57,s:w<=900?1.18:Math.min(1.75,Math.max(.85,(w-590)/390))};}
   function draw(dt){
@@ -178,9 +199,27 @@ export function mountAdventure(root, callbacks={}) {
         explorer(c,px,py+Math.sin(t*1.8)*5,scale*1.6,t);glyph(c,'drop',px-150*scale,py-35*scale,28,'#b6d4b3');star(c,px+143*scale,py-93*scale,12);
       }
       if(stage==='landing'){
-        const zone=w*.62;c.fillStyle='#c0e6ac25';c.fillRect(zone-w*.13,h*.49,w*.26,h*.3);ellipse(c,zone,h*.76,w*.13,14,'#9ed7b233','#d2e8ab');c.fillStyle='#eff1ce';c.textAlign='center';c.font='bold 12px sans-serif';c.fillText('LAND HERE ↓',zone,h*.82);
-        if(!chute){c.save();c.globalAlpha=.3;ellipse(c,playerX*w,playerY*h+15,65*scale,45*scale,'#f7aa4c');c.restore();}
-        explorer(c,playerX*w,playerY*h,scale*.8,t,{chute,loadout:state.loadout});
+        const shot=arrival(filmTime),x=w*shot.x,y=h*shot.y;
+        if(shot.heat>0&&!reduced){
+          c.save();c.globalAlpha=shot.heat;
+          for(let i=0;i<27;i++){const u=(i/27+t*.62)%1;ellipse(c,x-155*u*scale,y-110*u*scale+Math.sin(i*7)*13*scale,(1-u)*18*scale,4*scale,i%3?'#ffa856':'#fff3b9');}
+          ellipse(c,x,y+8*scale,51*scale,15*scale,'#ffa35a');c.restore();
+        }
+        c.save();c.globalAlpha=1-shot.reveal;if(shot.reveal<1)drawCapsule(x,y,false);c.restore();
+        if(shot.canopy>0){
+          c.save();c.translate(x,y);c.scale(scale,scale);c.lineWidth=1.7;
+          for(let i=-2;i<=2;i++)path(c,[[0,-19],[i*39*shot.canopy,-115*shot.canopy-24]],null,'#f7e8ca');
+          c.translate(0,-115*shot.canopy-24);c.scale(shot.canopy,shot.canopy);
+          for(let i=0;i<6;i++){
+            const left=-80+i*160/6,right=left+160/6;
+            c.beginPath();c.moveTo(left,0);c.quadraticCurveTo(left*.55,-54,0,-54);c.quadraticCurveTo(right*.55,-54,right,0);c.quadraticCurveTo((left+right)/2,-9,left,0);c.fillStyle=i%2?'#ffe8ba':'#d77742';c.fill();
+          }c.restore();
+        }
+        if(shot.reveal>0){c.save();c.globalAlpha=shot.reveal;explorer(c,x,y,scale*.76,t,{loadout:state.loadout});c.restore();}
+        if(shot.reveal>0&&shot.reveal<1)ellipse(c,x+shot.reveal*40,y+scale*(14+80*shot.reveal),42*scale,8*scale,'#9d6251');
+        if(shot.ripple>0){c.save();c.globalAlpha=1-shot.ripple;
+          for(let i=1;i<=3;i++)ellipse(c,x,y+20*scale,(16+shot.ripple*42*i)*scale,(3+shot.ripple*6*i)*scale,null,'#dfedc4');
+          for(let i=0;i<18;i++){const n=i-8.5;ellipse(c,x+n*shot.ripple*16*scale,y+(17-Math.sin(shot.ripple*Math.PI)*(58-Math.abs(n)*4))*scale,2*scale,4*scale,'#c4dbc0');}c.restore();}
       }
       if(stage==='lake'||stage==='done'){
         for(const d of DISCOVERIES){const x=(d.x-camera)*scale,y=d.y*h;if(x< -120||x>w+120)continue;const done=state.found.includes(d.id);ellipse(c,x,y+10,49*scale,11*scale,null,done?'#c7dfb13b':'#ebd28c88');
@@ -202,7 +241,8 @@ export function mountAdventure(root, callbacks={}) {
       for(let i=0;i<30;i++)path(c,[[i*60,0],[i*60,h]],null,'#c1d8b60b');for(let i=0;i<20;i++)path(c,[[0,i*60],[w,i*60]],null,'#c1d8b60b');
       const pos=builderPosition();
       ellipse(c,pos.x,pos.y-45,150*pos.s,115*pos.s,'#c5dfc307','#e5dca42e');ellipse(c,pos.x,pos.y+45*pos.s,126*pos.s,24*pos.s,'#213b3b');ellipse(c,pos.x,pos.y+40*pos.s,126*pos.s,18*pos.s,'#6d8b76','#b1b58c');
-      explorer(c,pos.x,pos.y+Math.sin(t)*3,pos.s,t,{loadout:state.loadout,deploy:reduced?1:1-(1-deployment)**3});
+      if(buildTab==='rocket')rocket(c,pos.x,pos.y-25*pos.s,pos.s*.89,t,0,state.loadout.rocket);
+      else explorer(c,pos.x,pos.y+Math.sin(t)*3,pos.s,t,{loadout:state.loadout,deploy:reduced?1:1-(1-deployment)**3});
       for(let i=0;i<3;i++){const a=t*.3+i*2.1;star(c,pos.x+Math.cos(a)*150*pos.s,pos.y-35+Math.sin(a)*80*pos.s,4,'#e7dcaa66');}
     }else if(stage==='launch'){
       const offset=launching?Math.min(1,launchTime/3):0;
@@ -211,18 +251,21 @@ export function mountAdventure(root, callbacks={}) {
       const ground=h*.82+offset*h;path(c,[[0,ground],[w*.2,ground-30],[w*.48,ground-10],[w*.7,ground-35],[w,ground],[w,h+offset*h],[0,h+offset*h]],'#5c7961');box(c,w*.5-95,ground,190,20,3,'#3b5351');
       if(!launching){const tx=w*.5+100,top=ground-260*scale;c.lineWidth=3;path(c,[[tx,ground],[tx,top],[tx+30,top],[tx+30,ground]],null,'#536b61');for(let i=0;i<6;i++){const yy=top+i*43*scale;path(c,[[tx,yy],[tx+30,yy+43*scale],[tx,yy+43*scale],[tx+30,yy]],null,'#7a8b72');}path(c,[[tx,top+50],[w*.5+27,top+50]],null,'#aab299');box(c,w*.5-100,ground-6,200,8,2,'#a9b195');}
       const ry=h*.82-84*scale*1.35-8-offset*h*.75;
-      rocket(c,w*.5+(reduced?0:Math.sin(time*40)*progress),ry,scale*1.35,t,launching?1:progress*.5);
+      rocket(c,w*.5+(reduced?0:Math.sin(time*40)*progress),ry,scale*1.35,t,launching?1:progress*.5,state.loadout.rocket);
       if(!launching){cloud(c,w*.5-50-Math.sin(t)*20,ground-16,.4,.2);cloud(c,w*.5+40+Math.sin(t)*30,ground-12,.5,.18);}
       if(launching){for(let i=0;i<12;i++)ellipse(c,w*.5+Math.sin(i*7)*launchTime*60,ground+i%3*5,10+launchTime*14,10+launchTime*10,'#eee4c74d');}
     }else if(stage==='cruise'){
-      space(c,w,h,t,reduced?0:time*20);const rx=ringX*w,ry=ringY*h;
-      c.save();c.lineWidth=7;ellipse(c,rx,ry,31*scale,70*scale,null,'#d6ae65');c.lineWidth=2;ellipse(c,rx,ry,23*scale,63*scale,null,'#ffe7b0');star(c,rx,ry,10*scale);c.restore();
-      c.save();c.translate(playerX*w,playerY*h);c.rotate(Math.PI/2);rocket(c,0,0,scale*.65,t,1);c.restore();
-      c.fillStyle='#eee1ba';c.font='12px sans-serif';c.textAlign='right';c.fillText('SATURN · view from space',w-25,h*.5);
+      const u=filmTime/CRUISE_SECONDS;
+      space(c,w,h,t,reduced?0:u*210);
+      drawCapsule(w*(reduced?.48:.12+.69*u),h*(.56-.12*Math.sin(u*Math.PI)),true);
     }
     if(!reduced){for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=100*dt;p.life-=dt;c.globalAlpha=Math.max(0,p.life);star(c,p.x,p.y,4,p.color);}c.globalAlpha=1;particles=particles.filter(p=>p.life>0);}else particles=[];
   }
   function frame(now){if(disposed)return;const dt=last?clamp((now-last)/1000,0,.05):0;last=now;const paused=document.hidden||!!document.querySelector('dialog[open]');if(!paused){time+=dt;update(dt);}draw(paused?0:dt);raf=requestAnimationFrame(frame);}
+  if(callbacks.launchLoadout){
+    state=freshAdventure();state.loadout={...callbacks.launchLoadout};
+    state.parts=['floats','power','radio'];state.stage='launch';home=false;persist();
+  }
   reduced=read('titan.adventure.motion',reduced)===true;sync();raf=requestAnimationFrame(frame);
   return ()=>{disposed=true;cancelAnimationFrame(raf);observer.disconnect();abort.abort();audio?.close();if(!home)persist();if(popup.open)popup.close();};
 }

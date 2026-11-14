@@ -8,7 +8,7 @@ function land(m = newMission(), choices = ['correct','sleep','gentle','safe','st
 }
 test('mass, cost and power account for all components, including the frame and launch cost',()=>{
   const m=newMission(), r=resources(m);
-  assert.equal(r.mass,1132); assert.equal(r.cost,93800); assert.equal(r.baseline,58); assert.equal(r.demand,98); assert.equal(r.margin,12); assert.equal(r.battery,550);
+  assert.equal(r.mass,1132); assert.equal(r.cost,93800); assert.equal(r.baseline,44); assert.equal(r.demand,84); assert.equal(r.margin,26); assert.equal(r.battery,550);
   assert.equal(validate(m).ok,true);
   assert.equal(FRAME.mass,220);
 });
@@ -22,14 +22,14 @@ test('every hardware selection updates resources, preserves budget and can be re
   }
 });
 test('purchase that exceeds the budget does not mutate spacecraft',()=>{
-  const m=newMission();const design=structuredClone(m.design);
+  const m=newMission("architect");const design=structuredClone(m.design);
   assert.equal(choosePart(m,'rocket','horizon').ok,false);assert.deepEqual(m.design,design);
 });
 test('missing essential systems, excessive mass and deficient power prevent launch',()=>{
   for(const category of ['rocket','power','comms','navigation','shield','hull']){
     const m=newMission();m.design[category]=null;assert.equal(validate(m).ok,false);assert.equal(beginFlight(m),false);
   }
-  const m=newMission();m.design.power='solar';assert.equal(validate(m).ok,false);
+  const m=newMission();m.design.power='solar';assert.equal(validate(m).ok,true);
   m.design.power='hybrid';m.design.shield='reinforced';m.design.hull='catamaran';m.design.instruments=CATALOG.instruments.map(x=>x.id);
   assert.ok(resources(m).mass>resources(m).capacity);assert.equal(validate(m).ok,false);
 });

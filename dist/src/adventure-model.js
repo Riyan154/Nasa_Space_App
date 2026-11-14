@@ -9,17 +9,21 @@ export const DISCOVERIES = [
   { id:'shore', x:2520, y:.67, symbol:'camera', title:'A moon full of surprises!', label:'Photograph the shore', tool:'Taking a panorama…', fact:'Titan is Saturn’s largest moon. It is bigger than the planet Mercury!', value:'BIGGER THAN MERCURY', color:'#e9a58c' },
 ];
 export const clamp = (v,min,max) => Math.max(min,Math.min(max,v));
-export function freshAdventure() { return {version:2, stage:'assemble', parts:[], loadout:{...DEFAULT_LOADOUT}, found:[], x:180, y:.77, rings:0, sent:false}; }
+export function freshAdventure() { return {version:2, stage:'assemble', parts:[], loadout:{...DEFAULT_LOADOUT}, found:[], x:180, y:.77,  sent:false}; }
 export function restoreAdventure(value) {
   if (!value || value.version!==2 || !['assemble','launch','cruise','landing','lake','done'].includes(value.stage)) return null;
   if (!Array.isArray(value.parts) || value.parts.some(p=>!['floats','power','radio'].includes(p)) || new Set(value.parts).size!==value.parts.length) return null;
   if (!Array.isArray(value.found) || value.found.some(id=>!DISCOVERIES.some(d=>d.id===id)) || new Set(value.found).size!==value.found.length) return null;
-  if (!Number.isFinite(value.x)||!Number.isFinite(value.y)||!Number.isInteger(value.rings)||value.rings<0||value.rings>3||typeof value.sent!=='boolean') return null;
+  if (!Number.isFinite(value.x)||!Number.isFinite(value.y)||typeof value.sent!=='boolean') return null;
   if (value.stage!=='assemble' && value.parts.length!==3) return null;
   if (value.sent && value.found.length!==5) return null;
   if (value.stage==='done' && (value.found.length!==5||!value.sent)) return null;
-  if(value.loadout!==undefined&&!validLoadout(value.loadout))return null;
-  return {...value,loadout:{...(value.loadout||DEFAULT_LOADOUT)},x:clamp(value.x,80,2700),y:clamp(value.y,.6,.9)};
+  let loadout=value.loadout===undefined?DEFAULT_LOADOUT:value.loadout;
+  if(loadout && !loadout.rocket && ['light','shield','heavy'].includes(loadout.body)){
+    loadout={rocket:'atlas',power:loadout.power,science:loadout.science,radio:loadout.radio};
+  }
+  if(!validLoadout(loadout))return null;
+  return {version:2,stage:value.stage,parts:[...value.parts],found:[...value.found],sent:value.sent,loadout:{...loadout},x:clamp(value.x,80,2700),y:clamp(value.y,.6,.9)};
 }
 export function nearbyDiscovery(state) {
   return DISCOVERIES.find(d=>!state.found.includes(d.id) && Math.abs(state.x-d.x)<125 && Math.abs(state.y-d.y)<.15) || null;

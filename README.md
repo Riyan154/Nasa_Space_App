@@ -1,8 +1,6 @@
 # TITAN: Deep Frontier
 
-The default browser game is a procedural 3D expedition to Titan, Mars or the Moon. Assemble Pip’s spacecraft, steer through three rings, prepare the landing equipment and drive to five discoveries. Use Space to launch and fly, arrows or WASD to steer, and E to collect. Touch controls and beacon guidance are available. The game saves on this browser. The Classic 2D game and its NASA gallery are available from the title screen or at `/?classic`.
-
-**Fictional mission, real scientific inspiration.** This game is not a NASA product and its buoyant lander is not NASA's Dragonfly rotorcraft. Original SVG scenery and spacecraft are game artwork. NASA imagery is labeled separately in the Science Lab.
+Build a spacecraft with Pip and explore Ligeia Mare in a hand-drawn, animated Canvas and SVG adventure. On this Mac, double-click **Open TITAN.command** in the project folder.
 
 ## Quick start
 
@@ -23,20 +21,16 @@ npm start
 
 ## Play
 
-The default **Little explorer mode** uses one short instruction at a time:
+Open **Advanced spacecraft workshop** on the title screen to enter the Mission Lab. Choose a science goal, inspect the two locally bundled NASA Cassini–Huygens reference models, configure Pip's equipment, run the power and downlink tests, save a comparison design, and launch the reviewed expedition. The four design stages are Idea, Feasibility, Compare, and Mission review. Changing a goal or part clears the completed test results. The **Engineering console** button opens the original detailed mission simulator.
 
-1. Customise Pip in the visual workbench. Choose a body under **Mass**, solar wings / a radioisotope generator / batteries under **Power**, and pictured **Science** and **Radio** equipment. **Budget** shows each part's coin cost. Keep all three mission checks green, then select **Ready for launch**. **Use a balanced build** restores a ready-to-fly design.
-2. Hold the launch button or Space until the rocket lifts off.
-3. Use arrows, WASD, touch arrows, or tap the scene to steer through three rings. Missed rings return; there are no lost lives.
-4. Steer left/right toward the landing beam. Open the parachute when its button turns green. The game waits for you.
-5. Sail to glowing science markers, then tap the big action button. Pip animates a sample scoop, thermometer, weather balloon or camera. Read or close the discovery card.
-6. Find all five discoveries, then send them to Earth to earn three explorer badges. Keep sailing or start again.
+Model credits and educational assumptions are documented in `src/models/CREDITS.md`. The local 3D viewer and its license are bundled under `src/vendor/`.
 
-The lake map offers optional guided sailing: tap a dot. The journal keeps your illustrated discoveries. Pause controls optional sound and gentle animation. Background tabs and open dialogs pause gameplay. Progress saves locally; reloading resumes at the current chapter, with discoveries and flight rings retained. The default game does not require any network requests. NASA gallery requests occur only when opened.
+1. Pick a rocket, a power source, a science tool and a radio. Fit the payload to the rocket and stay within 350 mission coins.
+2. Hold the launch button or Space. A six-second flyby takes Pip past Saturn. Choose **Skip to Landing** to jump ahead.
+3. Watch the aeroshell glow, the parachute inflate and Pip splash into the lake.
+4. Use the arrows or tap a lake-map marker to sail. Collect five discoveries, then radio them home.
 
-All sprites and scenery are original code-drawn Canvas 2D art: animated eyes and antenna, opening solar wings, visible batteries and generator cooling fins, layered clouds, lake ripples, boat wakes, methane rain, a detailed twin-booster rocket with animated exhaust, a moving parachute, transmission waves and discovery particles. Your chosen parts remain visible during landing and lake exploration. No generated raster assets or runtime game-engine dependencies are used. Physical movement, altitude, flight duration, navigation rings, marker positions and observations in Little explorer mode are fictional game mechanics, not a mission simulation. NASA reference facts are labeled and linked separately on each card.
-
-The little-explorer workbench uses illustrative masses, watts and mission coins, not NASA hardware specifications or real prices. Mass is limited to 240 kg, the coin budget to 300, and supply must meet the selected equipment's power demand. Small solar panels intentionally cannot power this Titan mission. Battery duration is an educational energy/demand estimate; it is not a gameplay countdown. Every science kit can complete the adventure using shared pretend tools. Existing version-2 saves migrate to a default loadout automatically. Before liftoff, **Edit spacecraft** returns to the builder without losing your choices.
+The flight timing and equipment numbers are illustrative game values.
 
 ### Advanced workshop
 
@@ -154,4 +148,4 @@ This produces a standalone static game in `dist/`. Do not put secrets in this di
 
 ## Known scope limits
 
-No multiplayer, 3D renderer, full orbital-mechanics solver, live Titan weather, real mission control, raw PDS processing, APOD carousel, NEO panel or DONKI panel. There is no account system, cloud save, service worker or guaranteed offline installation. Environmental and flight models are simplified educational approximations. Every main-menu action and the complete mission loop are implemented.
+No multiplayer, full orbital-mechanics solver, live Titan weather, real mission control, raw PDS processing, APOD carousel, NEO panel or DONKI panel. There is no account system, cloud save, service worker or guaranteed offline installation. Environmental and flight models are simplified educational approximations. Every main-menu action and the complete mission loop are implemented.

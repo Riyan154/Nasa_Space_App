@@ -6,7 +6,7 @@ function lakeState(){return {...freshAdventure(),stage:'lake',parts:['floats','p
 test('adventure save round-trips every checkpoint and ignores corrupt or impossible progress',()=>{
   const state=lakeState();state.found=['lake'];state.x=520;
   assert.deepEqual(restoreAdventure(JSON.parse(JSON.stringify(state))),state);
-  for(const bad of [null,{}, {...state,parts:[]},{...state,found:['fake']},{...state,found:['lake','lake']},{...state,rings:-1},{...state,x:NaN},{...state,stage:'done'}]) assert.equal(restoreAdventure(bad),null);
+  for(const bad of [null,{}, {...state,parts:[]},{...state,found:['fake']},{...state,found:['lake','lake']},{...state,x:NaN},{...state,stage:'done'}]) assert.equal(restoreAdventure(bad),null);
   assert.equal(restoreAdventure({...state,x:10000}).x,2700);
 });
 test('movement is bounded, diagonal speed is normalized, and a stalled frame cannot teleport',()=>{
@@ -29,4 +29,13 @@ test('the full lake journey earns all five facts before a successful transmissio
   assert.equal(state.sent,false);assert.equal(finishAdventure(state),true);assert.equal(state.stage,'done');assert.equal(state.sent,true);
   assert.ok(restoreAdventure(state));assert.equal(finishAdventure(state),false);
   state.stage='lake';assert.equal(finishAdventure(state),false,'free sailing does not repeat transmission');
+});
+
+import {arrival,CRUISE_SECONDS,LANDING_SECONDS} from '../src/titan-flight.js';
+test('arrival transitions from plasma to inflated canopy to floating explorer',()=>{
+  assert.equal(CRUISE_SECONDS,6);
+  assert.ok(arrival(1.6).heat>.99);
+  assert.equal(arrival(5).canopy,1);assert.equal(arrival(5).reveal,1);
+  assert.equal(arrival(LANDING_SECONDS).ripple,1);assert.equal(arrival(LANDING_SECONDS).canopy,0);
+  let last=-1;for(let t=0;t<10;t+=.01){const shot=arrival(t);assert.ok(shot.y>=last);last=shot.y;}
 });

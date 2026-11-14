@@ -1,1 +1,0 @@
-{"name":"Titan.Editor","references":["Titan.Runtime","Unity.RenderPipelines.Universal.Runtime","Unity.RenderPipelines.Core.Runtime"],"includePlatforms":["Editor"]}

@@ -1,27 +1,30 @@
-// Illustrative game engineering values, not specifications or prices of NASA hardware.
-export const BUILDER_LIMITS = { mass: 240, budget: 300 };
-export const DEFAULT_LOADOUT = { body: 'light', power: 'rtg', science: 'camera', radio: 'dish' };
+// Fictional equipment ratings for Pip's mission.
+export const BUILDER_LIMITS = { budget: 350 };
+export const DEFAULT_LOADOUT = { rocket:'atlas', power:'rtg', science:'camera', radio:'dish' };
 export const COMPONENTS = {
-  body: [
-    { id:'light', name:'Light explorer', tag:'LIGHT & NIMBLE', mass:25, cost:35, draw:0, detail:'A small aluminium body with slim floating feet. More room in your mass budget.' },
-    { id:'shield', name:'Insulated explorer', tag:'WRAPPED UP WARM', mass:50, cost:60, draw:0, detail:'A gold thermal blanket and wider floats. Insulation helps slow heat loss.' },
-    { id:'heavy', name:'Cargo explorer', tag:'BIG SCIENCE BUDDY', mass:80, cost:80, draw:0, detail:'A reinforced body and two chunky pontoons carry your equipment.' },
+  rocket: [
+    {"id": "scout", "name": "Scout-1 Light Booster", "mass": 0, "draw": 0, "capacity": 180, "cost": 60, "tag": "LEAN & NIMBLE", "detail": "Slender single-core launcher with dual vernier steering thrusters. Inexpensive, leaving maximum budget for heavy science tools."},
+    {"id": "atlas", "name": "Atlas Heavy-Lifter", "mass": 0, "draw": 0, "capacity": 240, "cost": 90, "tag": "THE WORKHORSE", "detail": "Dual strap-on solid boosters paired with corrugated cryogenic fuel tanks. The balanced standard for deep-space payloads."},
+    {"id": "titan", "name": "Titan Deep-Space V", "mass": 0, "draw": 0, "capacity": 300, "cost": 120, "tag": "BIG AMBITIONS", "detail": "Triple-core heavy booster with aerodynamic grid fins, clustered engine bells, and an expanded payload fairing."},
+    {"id": "horizon", "name": "Saturn Horizon Ultra", "mass": 0, "draw": 0, "capacity": 380, "cost": 150, "tag": "MAXIMUM LIFT", "detail": "Super-heavy exploration launch vehicle. Massive lifting capacity capable of carrying the heaviest labs and hybrid reactors with ease."}
   ],
   power: [
-    { id:'solar', name:'Solar wings', tag:'SUNLIGHT → ELECTRICITY', mass:28, cost:45, draw:0, supply:8, detail:'Blue cells turn sunlight into electricity. Titan is far from the Sun and very hazy: these small wings cannot run this mission.' },
-    { id:'rtg', name:'Radioisotope generator', tag:'HEAT → ELECTRICITY', mass:45, cost:110, draw:0, supply:110, detail:'A sealed generator turns heat from radioactive decay into electricity. Its fins release extra heat. It works without sunlight.' },
-    { id:'battery', name:'Battery pack', tag:'STORED ENERGY', mass:32, cost:55, draw:0, supply:80, energy:600, detail:'Stores electricity for a short trip. It runs out unless recharged. This pretend pack holds 600 Wh.' },
+    {"id": "solar", "name": "Solar Wings", "mass": 25, "draw": 0, "cost": 35, "supply": 45, "tag": "SUNLIGHT → ELECTRICITY", "detail": "Deployable photovoltaic arrays with gold foil hinges. Lightweight, but generates limited power in Titan's hazy dim sunlight."},
+    {"id": "rtg", "name": "Radioisotope Core (RTG)", "mass": 45, "draw": 0, "cost": 80, "supply": 110, "tag": "HEAT → ELECTRICITY", "detail": "Plutonium-238 decay heat converted into electricity. Operates continuously in complete darkness and extreme cold."},
+    {"id": "battery", "name": "Battery Storage Module", "mass": 30, "draw": 0, "cost": 45, "supply": 80, "energy": 600, "tag": "STORED ENERGY", "detail": "High-density chemical battery pack with copper busbars and status LEDs. Stores energy for short bursts of high-demand science."},
+    {"id": "hybrid", "name": "Hybrid RTG-Battery Core", "mass": 60, "draw": 0, "cost": 105, "supply": 140, "energy": 900, "tag": "CONTINUOUS & BURST", "detail": "Combines an RTG thermal generator with a rechargeable buffer battery. Powers all heavy scientific equipment simultaneously."}
   ],
   science: [
-    { id:'camera', name:'Panorama camera', tag:'LOOK CLOSELY', mass:12, cost:30, draw:8, detail:'A blue lens and rotating camera mast photograph the alien shore.' },
-    { id:'sampler', name:'Sample scoop', tag:'REACH & DISCOVER', mass:28, cost:55, draw:18, detail:'An articulated arm dips a copper scoop into the methane sea.' },
-    { id:'lab', name:'Mini science lab', tag:'A LITTLE OF EVERYTHING', mass:48, cost:85, draw:35, detail:'Twin sample canisters and extra sensors make a tiny floating laboratory.' },
+    {"id": "camera", "name": "Panorama Camera Mast", "mass": 12, "draw": 8, "cost": 25, "tag": "SURFACE IMAGING", "detail": "Rotating optical mast with motorized blue-glass lens, sun-shade baffle, and thermal insulation wrap."},
+    {"id": "sampler", "name": "Articulated Sample Scoop", "mass": 28, "draw": 18, "cost": 45, "tag": "LAKE SAMPLING", "detail": "Three-joint robotic arm with hydraulic lines and a bronze scooping cup for collecting liquid hydrocarbon samples."},
+    {"id": "lab", "name": "Mini Science Laboratory", "mass": 48, "draw": 35, "cost": 65, "tag": "DEEP INVESTIGATION", "detail": "Twin pressurized titanium sampling canisters, micro-spectrometer laser, and automated organic reagent analysis chamber."},
+    {"id": "weather", "name": "Atmosphere & Weather Station", "mass": 20, "draw": 12, "cost": 35, "tag": "AIR & CLIMATE", "detail": "Ultrasonic anemometer, micro-barometer, and cryogenic thermometer mast analyzing Titan's nitrogen air and methane rain cycles."}
   ],
   radio: [
-    { id:'whip', name:'Little antenna', tag:'SMALL & SIMPLE', mass:7, cost:20, draw:5, detail:'A slender antenna saves mass. In real missions, antenna design affects how much data can be sent.' },
-    { id:'dish', name:'Space dish', tag:'POINT TOWARD HOME', mass:15, cost:35, draw:12, detail:'A curved dish focuses radio signals. Watch it gently track across the sky.' },
-    { id:'array', name:'Twin antenna', tag:'DOUBLE THE DETAIL', mass:26, cost:65, draw:22, detail:'Two antenna panels with a small tracking dish make a detailed communications module.' },
-  ],
+    {"id": "whip", "name": "Omni Whip Antenna", "mass": 8, "draw": 5, "cost": 20, "rate": 35, "tag": "SMALL & SIMPLE", "detail": "A flexible metal whip sends signals in every direction."},
+    {"id": "dish", "name": "Parabolic Space Dish", "mass": 16, "draw": 12, "cost": 35, "rate": 90, "tag": "POINT TOWARD HOME", "detail": "Aim the curved reflector at Earth to concentrate the radio beam."},
+    {"id": "array", "name": "Phased Array Panel", "mass": 28, "draw": 22, "cost": 55, "rate": 180, "tag": "ELECTRONIC STEERING", "detail": "Small antenna elements steer the beam electronically."}
+  ]
 };
 export function validLoadout(value) {
   return !!value && typeof value==='object' && Object.entries(COMPONENTS).every(([group,items])=>items.some(item=>item.id===value[group]));
@@ -34,8 +37,9 @@ export function missionTotals(loadout) {
   const demand=15+items.reduce((sum,item)=>sum+item.draw,0);
   const power=items.find(item=>item.group==='power');
   const issues=[];
-  if(mass>BUILDER_LIMITS.mass)issues.push('Too heavy! Try a lighter body or science kit.');
+  const capacity=items[0].capacity;
+  if(mass>capacity)issues.push('Too heavy! Choose a larger rocket or lighter equipment.');
   if(cost>BUILDER_LIMITS.budget)issues.push('Over budget! Swap a part to save mission coins.');
   if(power.supply<demand)issues.push('Too little sunlight on Titan. Try the generator or battery pack.');
-  return {items,mass,cost,demand,supply:power.supply,margin:power.supply-demand,hours:power.energy?power.energy/demand:null,issues,ready:issues.length===0};
+  return {items,capacity,mass,cost,demand,supply:power.supply,margin:power.supply-demand,hours:power.id==='battery'?power.energy/demand:null,issues,ready:issues.length===0};
 }

@@ -1,8 +1,8 @@
 // All hardware specifications are fictional game-balancing values, not NASA designs.
 export const DIFFICULTIES = {
-  cadet: { name: 'Pathfinder', budget: 112000, wind: 0.07, description: 'Room to experiment. Your first expedition.' },
-  explorer: { name: 'Explorer', budget: 100000, wind: 0.13, description: 'A tighter budget. Every choice counts.' },
-  architect: { name: 'Architect', budget: 91000, wind: 0.20, description: 'Lean engineering. A demanding landing.' }
+  cadet: { name: 'Cadet', budget: 150000, wind: 0.07, description: 'Room to experiment. Your first expedition.' },
+  explorer: { name: 'Explorer', budget: 130000, wind: 0.13, description: 'A tighter budget. Every choice counts.' },
+  architect: { name: 'Architect', budget: 115000, wind: 0.20, description: 'Lean engineering. A demanding landing.' }
 };
 export const LAKES = {
   ligeia: { name: 'Ligeia Mare', density: 480, wind: 0.04, description: 'A northern sea. A gentle first splashdown.', color: '#6db7bb' },
@@ -18,7 +18,7 @@ export const CATEGORIES = [
   { id: 'shield', name: 'Protection', title: 'Ready for a fiery arrival?', text: 'A heat shield protects you on arrival. Insulation keeps the cold out later.' },
   { id: 'hull', name: 'Landing', title: 'Make a spaceship that floats.', text: 'Slow down with a parachute, then float on a sea of liquid methane.' }
 ];
-export const FRAME = { id: 'frame', name: 'Lander frame & flight computer', mass: 220, cost: 5000, draw: 18 };
+export const FRAME = { id: 'frame', name: 'Lander frame & flight computer', mass: 220, cost: 5000, draw: 12 };
 export const CATALOG = {
   rocket: [
     { id: 'atlas', name: 'Atlas Explorer', tag: 'Small & mighty', capacity: 1500, cost: 20000, reliability: 0.96, description: 'A nimble launch for a carefully packed explorer.', icon: 'rocket' },
@@ -27,7 +27,7 @@ export const CATALOG = {
     { id: 'horizon', name: 'Horizon Ultra', tag: 'Maximum lift', capacity: 5000, cost: 55000, reliability: 0.99, description: 'An enormous lift. A serious bite out of your funds.', icon: 'rocket' }
   ],
   power: [
-    { id: 'solar', name: 'Solar wings', tag: 'Sunlight dependent', mass: 160, cost: 7000, generation: 18, battery: 500, description: 'Affordable, but Titan’s faint sunlight cannot run essential systems.', icon: 'solar' },
+    { id: 'solar', name: 'Solar wings', tag: 'Sunlight dependent', mass: 160, cost: 7000, generation: 45, battery: 400, description: 'Sized for Titan’s faint sunlight. Use the battery for science.', icon: 'solar' },
     { id: 'advanced-solar', name: 'Giant solar wings', tag: 'Heavy & delicate', mass: 230, cost: 15000, generation: 72, battery: 700, description: 'Huge panels gather more light. Run science one tool at a time.', icon: 'solar' },
     { id: 'rtg', name: 'Radioisotope core', tag: 'Steady explorer', mass: 130, cost: 22000, generation: 110, battery: 550, description: 'Decay heat becomes electricity, even in the dark. Includes a separate battery.', icon: 'power' },
     { id: 'mmrtg', name: 'MMRTG core', tag: 'Long-haul power', mass: 190, cost: 28000, generation: 145, battery: 850, description: 'Continuous radioisotope power with a larger separate battery.', icon: 'power' },
@@ -53,7 +53,7 @@ export const CATALOG = {
     { id: 'precision', name: 'Precision pilot', tag: 'Confident arrival', mass: 300, cost: 14000, draw: 10, fuel: 95, accuracy: 0.95, description: 'Better sensing and more fuel give you extra options in flight.', icon: 'navigation' }
   ],
   shield: [
-    { id: 'light', name: 'Explorer shell', tag: 'Light protection', mass: 240, cost: 11000, draw: 20, heatLimit: 2.4e6, insulation: 0.7, description: 'Aeroshell, heat shield and insulation. Choose a gentle entry.', icon: 'shield' },
+    { id: 'light', name: 'Explorer shell', tag: 'Light protection', mass: 240, cost: 11000, draw: 12, heatLimit: 2.4e6, insulation: 0.7, description: 'Aeroshell, heat shield and insulation. Choose a gentle entry.', icon: 'shield' },
     { id: 'reinforced', name: 'Aurora shell', tag: 'Extra reassurance', mass: 390, cost: 17000, draw: 12, heatLimit: 4.5e6, insulation: 0.92, description: 'More heat protection and insulation, but more mass.', icon: 'shield' }
   ],
   hull: [
