@@ -1,5 +1,7 @@
 // Public, keyless NASA services. No remote data enters the simulation model.
-const IMAGE_ENDPOINT = 'https://images-api.nasa.gov/search?q=Titan%20Cassini&media_type=image&page_size=6';
+export const IMAGE_QUERIES={titan:'Titan Cassini Huygens',moon:'Apollo OR Artemis OR "Lunar Reconnaissance Orbiter"',mars:'Perseverance OR Curiosity OR "Jezero Crater"'};
+const IMAGE_TOPICS={titan:['Titan'],moon:['Apollo','Artemis','Lunar Reconnaissance Orbiter'],mars:['Perseverance','Curiosity','Jezero Crater']};
+export function imageEndpoint(destination='titan'){return `https://images-api.nasa.gov/search?q=${encodeURIComponent(IMAGE_QUERIES[destination]||IMAGE_QUERIES.titan)}&media_type=image&page_size=6`;}
 const TITAN_ID = 'urn:nasa:pds:context:target:satellite.saturn.titan';
 const PDS_ENDPOINT = `https://pds.nasa.gov/api/search/1/products?limit=6&q=${encodeURIComponent(`ref_lid_target eq "${TITAN_ID}"`)}`;
 const DAY = 24 * 60 * 60 * 1000;
@@ -93,8 +95,9 @@ async function requestJson(fetcher, url, timeoutMs) {
 
 async function load(kind, options = {}) {
   const { fetcher = globalThis.fetch, storage = browserStorage(), timeoutMs = 8000, endpoint = PDS_ENDPOINT, forceRefresh = false } = options;
+  const destination=Object.hasOwn(IMAGE_QUERIES,options.destination)?options.destination:'titan';
   const parse = kind === 'images' ? parseImages : parseDatasets;
-  const key = `titan.nasa.${kind}.v1`;
+  const key = `${kind==='images'?destination:'titan'}.nasa.${kind}.v1`;
   const cache = readCache(storage, key, parse);
   if (!forceRefresh && cache && Date.now() - cache.at < DAY) {
     return { items: cache.items, status: 'cached', message: 'Saved NASA response · cached within the last 24 hours.' };
@@ -103,7 +106,15 @@ async function load(kind, options = {}) {
   try {
     // Only the fixed same-origin relay is an alternative to the official endpoint.
     if (kind === 'datasets' && ![PDS_ENDPOINT, '/api/pds'].includes(endpoint)) throw new Error('invalid endpoint');
-    const payload = await requestJson(fetcher, kind === 'images' ? IMAGE_ENDPOINT : endpoint, timeoutMs);
+    let payload = await requestJson(fetcher, kind === 'images' ? imageEndpoint(destination) : endpoint, timeoutMs);
+    // NASA's free-text search does not reliably implement boolean OR. Merge
+    // separate topic results if the requested composite query is empty.
+    if(kind==='images'&&Array.isArray(payload?.collection?.items)&&!payload.collection.items.length){
+      const results=await Promise.allSettled(IMAGE_TOPICS[destination].map(topic=>requestJson(fetcher,`https://images-api.nasa.gov/search?q=${encodeURIComponent(topic)}&media_type=image&page_size=6`,timeoutMs)));
+      const lists=results.filter(r=>r.status==='fulfilled'&&Array.isArray(r.value?.collection?.items)).map(r=>r.value.collection.items),seen=new Set(),items=[];
+      for(let i=0;i<6;i++)for(const list of lists){const item=list[i],id=item?.data?.[0]?.nasa_id;if(id&&!seen.has(id)){seen.add(id);items.push(item);}}
+      payload={collection:{items}};
+    }
     const items = parse(payload);
     if (!items.length) throw new Error('empty');
     try { storage?.setItem(key, JSON.stringify({ at: Date.now(), payload })); } catch { /* Private browsing and full storage do not block science. */ }
@@ -111,7 +122,7 @@ async function load(kind, options = {}) {
   } catch (error) {
     reason = error?.message === 'rate-limit' ? 'NASA rate limit reached.'
       : error?.message === 'timeout' || error?.name === 'AbortError' ? 'NASA request timed out.'
-      : error?.message === 'empty' ? 'NASA returned no usable Titan results.'
+      : error?.message === 'empty' ? 'NASA returned no usable results for this destination.'
       : error?.message === 'invalid' ? 'NASA returned an unreadable response.'
       : 'NASA connection unavailable (network or browser access restriction).';
   }

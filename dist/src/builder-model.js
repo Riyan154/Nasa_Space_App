@@ -1,8 +1,9 @@
 // Fictional mission-credit and hardware ratings. Every installed item is explicit.
-export const BUILDER_LIMITS={budget:300};
+export const BUILDER_LIMITS={budget:325};
 export const CORE_CHASSIS={id:'core',group:'core',name:'Pip Core Chassis',mass:0,cost:0,draw:10};
 export const DEFAULT_LOADOUT={rocket:'atlas',power:'rtg',science:'camera',radio:'dish'};
 export const emptyLoadout=()=>({rocket:null,power:null,science:null,radio:null});
+export function launchPermission(totals){return totals.missing.length===0&&(totals.mass>totals.capacity&&totals.capacity>0||totals.cost<=BUILDER_LIMITS.budget&&totals.margin>=0);}
 export const COMPONENTS={
  rocket:[
  {id:'scout',name:'Sky Hopper',mass:0,draw:0,cost:50,capacity:170,tag:'LIGHT & BOUNCY',detail:'A nimble starter booster. Save mission coins for science gear and pack carefully.'},

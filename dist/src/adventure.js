@@ -1,14 +1,27 @@
 import { discoveriesFor, discoveryAccess, discoveryCoverage, TITAN_SEAS, applySurfaceCurrent, isShadowed, missionDebrief, DISCOVERIES, FACT_SOURCE, freshAdventure, restoreAdventure, nearbyDiscovery, moveExplorer, collectDiscovery, finishAdventure, clamp } from './adventure-model.js';
-import { lunarLandscape, lunarLander, lunarStation, landscape, explorer, rocket, space, ellipse, path, box, glyph, star, launchCloud as cloud } from './adventure-art.js';
+import { lunarLandscape, lunarLander as renderLunarLander, lunarStation, landscape, explorer as renderExplorer, rocket, ellipse, path, box, glyph, star, launchCloud as cloud } from './adventure-art.js';
 import { launchStation, hangar, scienceStation } from './station-art.js';
 import { COMPONENTS, emptyLoadout, missionTotals, toggleScience, hasScience, surveyLoadout } from './builder-model.js';
 import { builderMarkup, renderBuilder } from './builder-view.js';
-import { read, write } from './storage.js';
+import { read, write, loadPilotLogbook, savePilotExpedition } from './storage.js';
+import {logbookMarkup,escapeText} from './pilot-logbook.js';
+import {academyMarkup,academyPage} from './academy.js';
+import {freshTransit,advanceTransit,skipTransit,transitArt} from './transit.js';
+import {signalMarkup} from './communications.js';
+import {surfaceLighting} from './adventure-model.js';
+import {FOIL_ACCENTS,personalization,cleanCallsign,fitViewport,launchProfile,returnToWorkshop,retryTransit} from './flight-systems.js';
+import {launchPermission} from './builder-model.js';
+import {grandTour} from './pilot-logbook.js';
+import {drawFailure} from './detail-art.js';
+import {createFailure,advanceFailure,explosionPhase,failureContent} from './failure.js';
+import {lunarHeadlights} from './planet-art.js';
+import {eyeState} from './pip-eyes.js';
+import {manageEnergy} from './adventure-model.js';
 import { DESTINATIONS, destinationOf } from './catalog.js';
 import { missionAudio } from './mission-audio.js';
 import { marsScenery, descentCraft, surfaceDust, environmentVignette } from './planet-art.js';
 
-import { CRUISE_SECONDS, LANDING_SECONDS, arrival, lunarArrival, marsArrival, landingDuration } from './titan-flight.js';
+import { LANDING_SECONDS, arrival, lunarArrival, marsArrival, landingDuration } from './titan-flight.js';
 
 import {scienceGameFor} from './science-model.js';
 import {scienceTitle,scienceMarkup,mountScienceGame} from './science-view.js';
@@ -23,22 +36,23 @@ const stageNumber={assemble:0,launch:1,cruise:2,landing:3,lake:4,done:4};
 const labels={assemble:'Build your buddy',launch:'Ready, set… space!',cruise:'Past the rings of Saturn',landing:'A soft landing',lake:'The lake of little wonders',done:'You did it, explorer!'};
 export function adventureMarkup() {
   return `<main class="adventure" aria-label="Titan interactive game">
-    <header class="game-top"><button class="game-logo" data-game="home" aria-label="Titan adventure home"><span class="logo-orbit">✦</span><span>TITAN<small>DEEP FRONTIER</small></span></button><div class="game-chapters" aria-label="Adventure chapters">${chapters.map((s,i)=>`<span data-chapter="${i}"><b>${i+1}</b>${s}</span>`).join('')}</div><nav><button data-game="journal" aria-label="Discovery journal">▤ <span>My discoveries</span><b id="journal-count">0/5</b></button><button data-game="science" aria-label="Real NASA pictures">◉ <span>NASA pictures</span></button><button data-game="pause" aria-label="Pause and settings">Ⅱ</button></nav></header>
+    <header class="game-top"><button class="game-logo" data-game="home" aria-label="Titan adventure home"><span class="logo-orbit">✦</span><span>TITAN<small>DEEP FRONTIER</small></span></button><div class="game-chapters" aria-label="Adventure chapters">${chapters.map((s,i)=>`<span data-chapter="${i}"><b>${i+1}</b>${s}</span>`).join('')}</div><nav><button data-game="audio-toggle" class="audio-toggle" aria-label="Enable audio" aria-pressed="false">🔇</button><button data-game="journal" aria-label="Discovery journal">▤ <span>My discoveries</span><b id="journal-count">0/5</b></button><button data-game="science" aria-label="Real NASA pictures">◉ <span>NASA pictures</span></button><button data-game="pause" aria-label="Pause and settings">Ⅱ</button></nav></header>
     <div class="playfield"><canvas id="game-canvas" tabindex="0" aria-label="Game world. Use arrow keys or W A S D to move. Space does the current action. You can also tap a destination."></canvas>
-      <section id="welcome" class="game-welcome"><span class="tiny-label">A LITTLE ROBOT. A VERY BIG ADVENTURE.</span><h1>Big wonders.<br><em>Little explorer.</em></h1><p id="welcome-intro">Fly to Titan. Splash into a strange sea.<br>Help Pip discover what’s out there.</p><div class="destination-selector" role="group" aria-label="Choose your destination">${Object.values(DESTINATIONS).map(d=>`<div class="destination-card-wrap"><button data-game="destination" data-destination="${d.id}" aria-pressed="${d.id==='titan'}"><span>${d.id==='moon'?'☾':d.id==='mars'?'◉':'✦'}</span><b>${d.name}<small>${d.site}</small></b></button><button class="destination-info" data-game="destination-info" data-destination="${d.id}" aria-label="About ${d.name}">ⓘ</button></div>`).join('')}</div><div id="sea-selector" class="sea-selector" role="group" aria-label="Choose a Titan sea"><button data-game="sea" data-sea="ligeia" aria-pressed="true">Ligeia · Gentle</button><button data-game="sea" data-sea="kraken" aria-pressed="false">Kraken · Drifting</button></div><button class="play-button" data-game="play">Let’s play <span>▶</span></button><button class="continue-game" data-game="continue" hidden>Continue my adventure →</button></section>
+      <section id="welcome" class="game-welcome"><h1>Big wonders.<br><em>Little explorer.</em></h1><p id="welcome-intro">Fly to Titan. Splash into a strange sea.<br>Help Voyager discover what’s out there.</p><div class="destination-selector" role="group" aria-label="Choose your destination">${Object.values(DESTINATIONS).map(d=>`<div class="destination-card-wrap"><button data-game="destination" data-destination="${d.id}" aria-pressed="${d.id==='titan'}"><span>${d.id==='moon'?'☾':d.id==='mars'?'◉':'✦'}</span><b>${d.name}<small>${d.site}</small></b></button><button class="destination-info" data-game="destination-info" data-destination="${d.id}" aria-label="About ${d.name}">ⓘ</button></div>`).join('')}</div><div id="sea-selector" class="sea-selector" role="group" aria-label="Choose a Titan sea"><button data-game="sea" data-sea="ligeia" aria-pressed="true">Ligeia · Gentle</button><button data-game="sea" data-sea="kraken" aria-pressed="false">Kraken · Drifting</button></div><button class="play-button" data-game="play">Let’s play <span>▶</span></button><button class="continue-game" data-game="continue" hidden>Continue my adventure →</button></section>
+      <button class="pilot-logbook-button" data-game="logbook">🎖 Pilot Logbook</button><div id="shield-warning" class="shield-warning" role="status" hidden>Shield absorbed impact · Keep steering!</div><section id="signal-transit" class="signal-transit" aria-label="Radio downlink to Earth" hidden></section><div id="shadow-alert" class="shadow-alert" role="status" hidden>SHADOW ZONE: Solar generation 0 W · Drawing on buffer battery!</div>
       <div id="game-heading" class="game-heading" hidden><span class="tiny-label" id="chapter-label"></span><h1 id="chapter-title"></h1><p id="instruction" role="status" aria-live="polite"></p></div>
       <div id="world-label" class="world-label"><span>YOUR DESTINATION</span><b>Ligeia Mare</b><small>A methane sea on Saturn’s moon</small></div>
-      <div class="pip-tag" id="pip-tag"><b>Hi! I’m Pip.</b><span>Your curious little co-pilot</span></div>
+      <div class="pip-tag" id="pip-tag"><b>Hi! I’m Voyager.</b><span>Your curious little co-pilot</span></div>
       ${builderMarkup()}
       <button id="edit-spacecraft" class="edit-spacecraft" data-game="edit-build" hidden>← Edit spacecraft</button>
       <button class="missing-tool-warning" id="missing-tool-warning" data-game="tool-help" hidden></button><div class="game-toast" id="game-toast" role="status" aria-live="polite"></div>
       <section id="trajectory-map" class="trajectory-map" aria-label="Orbital transfer map" hidden></section>
       <div id="surface-tools" class="surface-tools" hidden><span id="current-status">Surface current →</span><button id="anchor-control" data-game="anchor" aria-pressed="false">Deploy stabilizers ⚓</button></div>
-      <div id="flight-meter" class="flight-meter" hidden><span id="meter-label"></span><div><i id="meter-fill"></i></div></div>
+      <div id="flight-meter" class="flight-meter" hidden><span id="meter-label"></span><div><i id="meter-fill"></i></div><section id="hull-display" hidden aria-label="Hull integrity"><b id="hull-text">HULL INTEGRITY · 100%</b><div class="hull-track"><i id="hull-fill"></i></div></section></div>
       <div id="mini-map" class="mini-map" hidden><span>LAKE MAP</span><div id="map-track">${DISCOVERIES.map(d=>`<button data-game="navigate" data-id="${d.id}" style="left:${d.x/2800*100}%" aria-label="Guide Pip to ${d.label.toLowerCase()}">●</button>`).join('')}<i id="map-pip"></i></div><small id="map-caption">Tap a dot to guide Pip there</small></div>
       <div id="game-controls" class="game-controls" hidden><div class="direction-pad" aria-label="Movement controls"><button data-direction="up" aria-label="Move up">↑</button><button data-direction="left" aria-label="Move left">←</button><button data-direction="down" aria-label="Move down">↓</button><button data-direction="right" aria-label="Move right">→</button></div><div class="action-wrap"><div class="action-progress"><i id="action-fill"></i></div><button class="play-button" id="game-action" data-game="action">Launch! <span>↑</span></button><small id="control-tip">Arrow keys / WASD to move · Space to act</small></div></div>
-      <div class="scene-credit">ORIGINAL 2D GAME ART · NASA SCIENCE</div>
-    </div><footer class="game-footer"><span><i></i> Little explorer mode</span><span>Fictional adventure. Real-world wonder.</span><button data-game="help">How to play ?</button></footer>
+      <button class="floating-help" data-game="help" aria-label="How to play">?</button>
+    </div>
     <dialog id="destination-info-modal" class="adventure-dialog destination-info-modal" aria-labelledby="destination-info-title"></dialog>
     <dialog id="adventure-popup" class="adventure-dialog" aria-labelledby="adventure-dialog-title"></dialog>
   </main>`;
@@ -57,23 +71,31 @@ export function mountAdventure(root, callbacks={}) {
   let progress=0,working=null,launching=false,launchTime=0,transmitting=false,target=null;
   let particles=[],trails=[],direction=1,keys=new Set(),held=new Map(),textCache={},buildTab='rocket',deployment=1;
   let soundEnabled=read('titan.adventure.sound',false)===true;
+  let scienceHazard=false,blurred=false,launchActivation=false,viewport=fitViewport(1200,700),failure=null;
+  function fail(type,x,y){if(failure)return;failure=createFailure(type,x,y);state.incidents.aborts++;sfx.explode();persist();}
+  function failureDialog(){const content=failureContent(failure.type,missionTotals(state.loadout,state.destination));showDialog(content.title,content.body);popup.querySelector('.dialog-x')?.remove();popup.querySelector('.play-button')?.focus();}
+  function explorer(ctx,x,y,s,t,options={}){const v=input(),dx=v.dx||(target?Math.sign(target.x-state.x):0),dy=v.dy||(target?Math.sign(target.y-state.y):0);renderExplorer(ctx,x,y,s,t,{...options,accent:FOIL_ACCENTS[state.accent]?.color,wheelRotation:wheelAngle,eyes:eyeState({time:t,reduced,dx,dy,moving:!!options.moving,science:!!working||!!miniDispose,hazard:scienceHazard||state.batteryUsedWh>=600||(!home&&state.stage==='lake'&&state.sea==='kraken'&&!state.anchored),complete:!home&&state.sent})});}
   let reduced=callbacks.reducedMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const on=(node,event,fn)=>node.addEventListener(event,fn,{signal});
-  function persist(){if(!write(KEY,state))toast('Saving is unavailable. Keep this tab open to keep playing.');saved=structuredClone(state);}
+  function persist(){if(!write(KEY,state))toast('Saving is unavailable. Keep this tab open to keep playing.');saved=structuredClone(state);if(!home&&!savePilotExpedition(state,missionDebrief(state,missionTotals(state.loadout,state.destination))))toast('Pilot logbook could not be saved on this device.');}
   function text(id,value){if(textCache[id]!==value){$(id).textContent=value;textCache[id]=value;}}
   function visible(id,show){$(id).hidden=!show;}
   function toast(message){text('#game-toast',message);$('#game-toast').classList.add('visible');elapsed=0;}
   function ping(note=660){sfx.ping(note);}
   function burst(x,y,color='#f4d17b',amount=22){for(let i=0;i<amount;i++)particles.push({x,y,vx:Math.cos(i*2.4)*(30+i%7*17),vy:Math.sin(i*2.4)*(40+i%5*20)-50,life:1.3,color});}
-  function resize(){const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);w=rect.width;h=rect.height;scale=clamp(Math.min(w/1100,h/650),.45,1.5);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);c.setTransform(dpr,0,0,dpr,0,0);}
+  function resize(){const rect=canvas.getBoundingClientRect();viewport=fitViewport(rect.width,rect.height,devicePixelRatio);w=1200;h=700;scale=1;canvas.width=viewport.pixelWidth;canvas.height=viewport.pixelHeight;}
   const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
-  function resetRuntime(){trajectoryStamp=-1;progress=0;working=null;launching=false;launchTime=0;transmitting=false;filmTime=0;touchdownShake=0;launchTick=0;target=null;keys.clear();held.clear();particles=[];trails=[];text('#game-toast','');$('#game-toast').classList.remove('visible');}
-  function changeStage(stage){state.stage=stage;resetRuntime();persist();sync();ping(760);}
-  function start(resume){home=false;if(!resume){state=freshAdventure(selectedDestination,selectedSea);buildTab='rocket';}selectedDestination=state.destination;selectedSea=state.sea;resetRuntime();persist();sync();canvas.focus({preventScroll:true});}
+  function resetRuntime(){trajectoryStamp=-1;progress=0;working=null;launching=false;launchTime=0;transmitting=false;filmTime=state.stage==='cruise'?(state.transit?.elapsed||0):0;touchdownShake=0;launchTick=0;target=null;keys.clear();held.clear();particles=[];trails=[];text('#game-toast','');$('#game-toast').classList.remove('visible');}
+  function changeStage(stage){if(stage==='cruise')state.transit=freshTransit(state.destination);state.stage=stage;resetRuntime();persist();sync();ping(760);}
+  function start(resume){home=false;if(!resume){state={...freshAdventure(selectedDestination,selectedSea),...personalization(read('deepfrontier.personalization',{}))};buildTab='rocket';}selectedDestination=state.destination;selectedSea=state.sea;resetRuntime();persist();sync();canvas.focus({preventScroll:true});}
   function sync(){
     const stage=state.stage;
+    root.dataset.reduced=String(reduced);
+    root.querySelector('[data-callsign]').value=state.callsign;root.querySelector('[data-foil]').value=state.accent||'gold';
+    let ribbon=$('#grand-tour-ribbon');if(!ribbon){ribbon=document.createElement('span');ribbon.id='grand-tour-ribbon';ribbon.className='grand-tour-ribbon';ribbon.textContent='❦ GRAND TOUR MASTER ❦';$('#welcome').prepend(ribbon);}ribbon.hidden=!grandTour(loadPilotLogbook());
+    const audioButton=$('[data-game="audio-toggle"]');audioButton.textContent=soundEnabled?'🔊':'🔇';audioButton.setAttribute('aria-pressed',String(soundEnabled));audioButton.setAttribute('aria-label',soundEnabled?'Mute audio':'Enable audio');
     root.querySelectorAll('[data-game="destination"]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.destination===selectedDestination)));
-    text('#welcome-intro',mars()?'Journey to Mars. Drive across Jezero Crater and uncover five clues to the Red Planet’s past.':moon()?'Drive to the Moon’s South Pole. Follow the light, explore the shadows, and bring five discoveries home.':'Fly to Titan. Splash into a strange sea. Help Pip discover what’s out there.');
+    text('#welcome-intro',mars()?'Journey to Mars. Drive across Jezero Crater and uncover five clues to the Red Planet’s past.':moon()?'Drive to the Moon’s South Pole. Follow the light, explore the shadows, and bring five discoveries home.':'Fly to Titan. Splash into a strange sea. Help Voyager discover what’s out there.');
     visible('#sea-selector',home&&!rocky());
     root.querySelectorAll('[data-game="sea"]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.sea===selectedSea)));
     root.querySelector('[data-game="destination"][data-destination="titan"] small').textContent=TITAN_SEAS[selectedSea].name;
@@ -101,12 +123,15 @@ export function mountAdventure(root, callbacks={}) {
   }
   function updateHUD(){
     if(home)return;
+    visible('#hull-display',state.stage==='cruise');$('#hull-fill').style.width=state.transit.hull+'%';text('#hull-text','HULL INTEGRITY · '+state.transit.hull+'%');
     let instruction='',action='',disabled=false,meter='',amount=0;
     if(state.stage==='assemble')instruction='Choose a rocket, power, science tool and radio. Watch Pip take shape!';
     if(state.stage==='launch'){instruction=launching?'Up, up and away!':'Hold the big button (or Space) to lift off!';action=launching?'Lifting off…':'Hold to launch ↑';disabled=launching;meter=launching?'LIFT OFF!':`ROCKET POWER ${Math.round(progress*100)}%`;amount=progress;$('#edit-spacecraft').disabled=launching;}
     if(state.stage==='cruise'){
-      instruction=rocky()?'Pip is secure for the approach. Next: landing!':'Pip is tucked inside the cruise capsule.';action='Skip to Landing ⏭';
-      meter=mars()?'MARS TRANSFER · Cruise → approach → Jezero Crater':moon()?'LUNAR TRANSFER · Coast → orbit insertion → south pole':'SATURN TRANSFER · Passing the rings · Time compressed for play';amount=filmTime/CRUISE_SECONDS;
+      instruction='Steer with arrows, WASD or touch. Dodge debris! A clean flight earns Evasive Pilot +15.';action='Skip to Landing ⏭';
+      meter=`CRUISE TIME: ${Math.ceil(state.transit.duration-filmTime)}s · HULL INTEGRITY ${state.transit.hull}%`;amount=filmTime/state.transit.duration;
+      $('#flight-meter').dataset.integrity=state.transit.hull<35?'critical':state.transit.hull<70?'warning':'healthy';
+      root.querySelectorAll('[data-direction]').forEach(button=>button.disabled=false);
       const stamp=Math.floor(filmTime*12);
       if(stamp!==trajectoryStamp){trajectoryStamp=stamp;updateTrajectory($('#trajectory-map'),state.destination,amount,reduced);}
     }
@@ -135,12 +160,15 @@ export function mountAdventure(root, callbacks={}) {
       root.querySelectorAll('[data-direction]').forEach(button=>button.disabled=state.anchored);
     }
     text('#instruction',instruction);text('#game-action',action);$('#game-action').disabled=disabled;
-    visible('#control-tip',state.stage==='lake');
+    visible('#control-tip',['lake','cruise'].includes(state.stage));
+    visible('#shield-warning',!home&&state.stage==='cruise'&&state.transit.warning>0);
+    visible('#signal-transit',transmitting);if(transmitting)$('#signal-transit').style.setProperty('--signal-progress',String(progress));
+    visible('#shadow-alert',!home&&surfaceLighting(state).headlights&&state.loadout.power==='solar');
     text('#meter-label',meter);$('#meter-fill').style.width=`${amount*100}%`;$('#action-fill').style.width=`${progress*100}%`;
-    const pad=$('.direction-pad');pad.hidden=state.stage!=='lake';
+    const pad=$('.direction-pad');pad.hidden=!['lake','cruise'].includes(state.stage);
   }
-  function showDialog(title,body){miniDispose?.();miniDispose=null;popup.classList.remove('has-science-game');keys.clear();held.clear();target=null;popup.innerHTML=`<button class="dialog-x" data-game="close" aria-label="Close">×</button><h2 id="adventure-dialog-title">${title}</h2>${body}`;if(!popup.open)popup.showModal();}
-  function closeDialog(){const wasExperiment=!!miniDispose;miniDispose?.();miniDispose=null;popup.classList.remove('has-science-game');popup.close();if(wasExperiment)persist();if(state.stage==='done'){state.stage='lake';persist();sync();}canvas.focus({preventScroll:true});}
+  function showDialog(title,body){miniDispose?.();miniDispose=null;scienceHazard=false;popup.classList.remove('has-science-game','wide-dialog');keys.clear();held.clear();target=null;popup.innerHTML=`<button class="dialog-x" data-game="close" aria-label="Close">×</button><h2 id="adventure-dialog-title">${title}</h2>${body}`;if(!popup.open)popup.showModal();sfx.pause(true);}
+  function closeDialog(){const wasExperiment=!!miniDispose;miniDispose?.();miniDispose=null;popup.classList.remove('has-science-game');popup.close();popup.replaceChildren();if(wasExperiment)persist();if(state.stage==='done'){state.stage='lake';persist();sync();}canvas.focus({preventScroll:true});}
   function factCard(d){showDialog('New discovery!',`<div class="discovery-art" style="--discovery-color:${d.color}"><canvas id="fact-picture" width="420" height="180" aria-label="Illustration of ${d.title}"></canvas><span>✦ DISCOVERY ${state.found.length} / 5</span></div><h3>${d.title}</h3><p>${d.fact}</p><strong class="fact-value">${d.value}</strong><small class="fact-source">Real reference fact · <a href="${d.source||FACT_SOURCE}" target="_blank" rel="noopener">NASA science reference ↗</a><br>Pip’s sample collection is pretend play, not a measurement.</small><button class="play-button" data-game="close">${state.found.length===5?'Send my discoveries home':'Keep exploring'} →</button>`);const fc=$('#fact-picture').getContext('2d');fc.fillStyle=d.color;fc.globalAlpha=.12;fc.fillRect(0,0,420,180);fc.globalAlpha=1;for(let i=0;i<8;i++)star(fc,30+i*52,25+(i%3)*50,3,d.color);glyph(fc,d.symbol,210,83,96,d.color);ellipse(fc,210,148,69,8,'#233c3b15');}
 function journal(){showDialog('My discovery journal',`<p>Five little wonders. One extraordinary ${world().id==='mars'?'planet':'moon'}.</p>${state.sent?'<button class="continue-game" data-game="debrief">Expedition debrief →</button>':''}<div class="sticker-grid">${discoveries().map(d=>`<button data-game="read-fact" data-id="${d.id}" ${state.found.includes(d.id)?'':'disabled'}><canvas width="90" height="80" data-sticker="${d.id}" aria-hidden="true"></canvas><b>${state.found.includes(d.id)?d.title:'Still a mystery'}</b></button>`).join('')}</div><button class="play-button" data-game="close">Back to Pip →</button>`);root.querySelectorAll('[data-sticker]').forEach(el=>{const d=discoveries().find(d=>d.id===el.dataset.sticker);glyph(el.getContext('2d'),d.symbol,45,38,38,state.found.includes(d.id)?d.color:'#999c8d');});}
   function pause(){showDialog(home?'Welcome, explorer!':'Take a little breather',`<p>${home?'Three worlds are waiting for you.':'Pip will wait right here. Your adventure is saved on this device.'}</p><div class="pause-options"><button data-game="sound">${soundEnabled?'♫ Sound on':'♪ Sound off'} — tap to change</button><button data-game="motion">${reduced?'Gentle animation on':'Gentle animation off'} — tap to change</button><button data-game="help">How to play</button>${callbacks.workshop?'<button data-game="workshop">Advanced spacecraft workshop ↗</button>':''}${!home&&state.stage==='lake'&&!state.sent?'<button data-game="refit">Repack and relaunch</button>':''}</div><button class="play-button" data-game="close">${home?'Let’s go':'Keep playing'} ▶</button>`);}
@@ -150,16 +178,24 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
   }
   function startScience(kind,id){
     target=null;showDialog(scienceTitle(kind),scienceMarkup(kind));popup.classList.add('has-science-game');
-    miniDispose=mountScienceGame(popup,kind,{reduced,onCue:ping,onComplete:()=>awardDiscovery(id),onActive:dt=>{
-      if(!state.sent){state.missionSeconds+=dt;state.energyUsedWh+=missionTotals(state.loadout,state.destination).demand*dt/3600;}
+    miniDispose=mountScienceGame(popup,kind,{reduced,onCue:ping,onHazard:active=>{if(active)state.incidents.overheats++;scienceHazard=active;persist();},onComplete:()=>awardDiscovery(id),onActive:dt=>{
+      if(!state.sent)manageEnergy(state,missionTotals(state.loadout,state.destination),dt);
     }});
   }
-  function action(){if(home||popup.open)return;if(state.stage==='cruise'){changeStage('landing');return;}if(state.stage==='lake'&&!working&&!transmitting){if(state.sent){journal();}else if(state.found.length===5){transmitting=true;progress=0;ping(800);}else{const near=nearbyDiscovery(state);if(near){const access=discoveryAccess(state,near.id);if(!access.allowed){toast(access.message);return;}const kind=scienceGameFor(state.destination,near.id);if(kind)startScience(kind,near.id);else{working=near.id;target=null;progress=0;ping(460);}}}}}
-  function ending(){const photo=missionPhoto(state),report=missionDebrief(state,missionTotals(state.loadout,state.destination));showDialog(world().name+' expedition debrief',`<img class="mission-patch" src="${new URL('./rewards/'+report.destination.patch,import.meta.url).href}" alt="${world().name} expedition artwork"><span class="tiny-label">EXPEDITION DEBRIEF · ${site().toUpperCase()}</span><h3>Five discoveries. All downlinked.</h3>${photo?`<figure class="mission-photo"><img src="${new URL('./rewards/'+photo.file,import.meta.url).href}" alt="${photo.title}"><figcaption>${photo.title}<small>${photo.kind}<br>Credit: ${photo.credit}</small></figcaption></figure><button class="play-button photo-download" data-game="download-photo">Download NASA Mission Photo ↓</button><a class="photo-source" href="${photo.source}" target="_blank" rel="noopener">Open original NASA image record ↗</a>`:''}<dl class="debrief-stats"><div><dt>Payload mass</dt><dd>${report.mass} kg</dd></div><div><dt>Energy consumed</dt><dd>${report.energyUsedWh.toFixed(2)} Wh</dd></div><div><dt>Mission rating</dt><dd>${report.rating}</dd></div><div><dt>Science score</dt><dd>${report.score}</dd></div></dl><p>Energy integrates the selected equipment’s watts over active play time. Flight time, hardware ratings and this expedition are simplified for play.</p><button class="play-button" data-game="freeplay">Keep exploring →</button><button class="continue-game" data-game="journal">My discoveries</button><button class="continue-game" data-game="home">Choose another world</button>`);}
+  function action(){if(home||popup.open)return;if(state.stage==='cruise'){skipTransit(state.transit);changeStage('landing');return;}if(state.stage==='lake'&&!working&&!transmitting){if(state.sent){journal();}else if(state.found.length===5){transmitting=true;$('#signal-transit').innerHTML=signalMarkup(state.destination);progress=0;ping(800);}else{const near=nearbyDiscovery(state);if(near){const access=discoveryAccess(state,near.id);if(!access.allowed){toast(access.message);return;}const kind=scienceGameFor(state.destination,near.id);if(kind)startScience(kind,near.id);else{working=near.id;target=null;progress=0;ping(460);}}}}}
+  function ending(){const photo=missionPhoto(state),report=missionDebrief(state,missionTotals(state.loadout,state.destination));showDialog(world().name+' expedition debrief',`<img class="mission-patch" src="${new URL('./rewards/'+report.destination.patch,import.meta.url).href}" alt="${world().name} expedition artwork"><span class="tiny-label">EXPEDITION DEBRIEF · ${site().toUpperCase()}</span><h3>Five discoveries. All downlinked.</h3>${photo?`<figure class="mission-photo"><img src="${new URL('./rewards/'+photo.file,import.meta.url).href}" alt="${photo.title}"><figcaption>${photo.title}<small>${photo.kind}<br>Credit: ${photo.credit}</small></figcaption></figure><button class="play-button photo-download" data-game="download-photo">Download NASA Mission Photo ↓</button><a class="photo-source" href="${photo.source}" target="_blank" rel="noopener">Open original NASA image record ↗</a>`:''}<dl class="debrief-stats"><div><dt>Payload mass</dt><dd>${report.mass} kg</dd></div><div><dt>Energy consumed</dt><dd>${report.energyUsedWh.toFixed(2)} Wh</dd></div><div><dt>Mission rating</dt><dd>${report.rating}</dd></div><div><dt>Science score</dt><dd>${report.score}</dd></div></dl><p>Energy integrates the selected equipment’s watts over active play time. Flight time, hardware ratings and this expedition are simplified for play.</p><button class="play-button" data-game="logbook">🎖 Pilot Logbook</button><button class="play-button" data-game="freeplay">Keep exploring →</button><button class="continue-game" data-game="journal">My discoveries</button><button class="continue-game" data-game="home">Choose another world</button>`);}
 
   on(root,'click',event=>{
     const el=event.target.closest('[data-game]');if(!el||el.disabled)return;const a=el.dataset.game;
+    if(a==='failure-workshop'){failure=null;returnToWorkshop(state);closeDialog();resetRuntime();persist();sync();return;}
+    if(a==='retry-transit'){failure=null;retryTransit(state,freshTransit);closeDialog();resetRuntime();persist();sync();return;}
+    if(a==='abort-transit'){failure=null;returnToWorkshop(state);closeDialog();home=true;resetRuntime();persist();sync();return;}
+    if(failure)return;
+    if(a==='action'&&launchActivation){launchActivation=false;return;}
     sfx.enable(soundEnabled);
+    if(a==='logbook'){showDialog('Pilot Logbook',`<label class="pilot-callsign">Your callsign <input data-pilot-callsign maxlength="12" value="${escapeText(state.callsign)}" autocomplete="off"></label>`+logbookMarkup(loadPilotLogbook()));popup.classList.add('wide-dialog');return;}
+    if(a==='audio-toggle'){soundEnabled=!soundEnabled;write('titan.adventure.sound',soundEnabled);sfx.enable(soundEnabled);sfx.pause(blurred||document.hidden||popup.open);if(soundEnabled)sfx.chime();sync();return;}
+    if(a==='help'||a==='academy-page'){const page=a==='help'?0:academyPage(Number(el.dataset.page));showDialog('Explorer Storybook',academyMarkup(page));return;}
     if(a==='destination'&&home&&Object.hasOwn(DESTINATIONS,el.dataset.destination)){selectedDestination=el.dataset.destination;sync();return;}
     if(a==='sea'&&home&&Object.hasOwn(TITAN_SEAS,el.dataset.sea)){selectedSea=el.dataset.sea;sync();return;}
     if(a==='anchor'&&!home&&state.stage==='lake'&&!rocky()&&!working&&!transmitting){
@@ -172,12 +208,12 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
       el.disabled=true;downloadMissionPhoto(state).then(()=>toast('NASA photo downloaded. Keep exploring!')).catch(error=>toast(error.message)).finally(()=>{if(el.isConnected)el.disabled=false;});return;
     }
     if(a==='tool-help'){const near=nearbyDiscovery(state);if(near){const access=discoveryAccess(state,near.id);showDialog('Pip needs another tool',`<p>${access.message}</p><p>Your earned discoveries stay in the journal. Repack and launch a kit that reaches the remaining stations.</p><button class="play-button" data-game="refit">Repack and relaunch →</button><button class="continue-game" data-game="close">Keep exploring</button>`);}return;}
-    if(a==='refit'&&!home&&state.stage==='lake'&&!state.sent){if(popup.open)closeDialog();state.anchored=false;changeStage('assemble');toast('Your journal is safe. Review the payload, then launch again.');return;}
+    if(a==='refit'&&!home&&state.stage==='lake'&&!state.sent){if(popup.open)closeDialog();state.incidents.aborts++;state.anchored=false;changeStage('assemble');toast('Your journal is safe. Review the payload, then launch again.');return;}
     if(a==='play'){if(saved){showDialog('A fresh adventure?',`<p>This starts Pip’s journey again. Your current adventure will be replaced.</p><button class="play-button" data-game="restart">Start again</button><button class="continue-game" data-game="resume">Keep my adventure</button>`);}else start(false);}
     if(a==='restart'){closeDialog();start(false);}
     if(a==='continue'||a==='resume'){if(popup.open)closeDialog();start(true);if(state.sent)ending();}
-    if(a==='home'){if(popup.open)popup.close();if(!home)persist();home=true;resetRuntime();sync();}
-    if(a==='science'){if(rocky())showDialog(world().name+' science field notes',`<p>${mars()?'Explore NASA’s evidence for ancient water, a thin atmosphere, marsquakes and wind-shaped terrain.':'Apollo instruments revealed dust, moonquakes and laser ranging. Polar exploration studies shadowed terrain and resources.'}</p><p>Our five stations are a fictional route inspired by NASA science.</p><a href="https://science.nasa.gov/${mars()?'mars':'moon'}/" target="_blank" rel="noopener">NASA ${world().name} science ↗</a><button class="play-button" data-game="close">Back to Pip →</button>`);else callbacks.science?.();}
+    if(a==='home'){if(transmitting)state.incidents.aborts++;miniDispose?.();miniDispose=null;if(popup.open)popup.close();if(!home)persist();home=true;resetRuntime();sync();}
+    if(a==='science'){callbacks.science?.(world().id);}
     if(a==='workshop'){callbacks.workshop?.();}
     if(a==='close')closeDialog();
     if(a==='journal')journal();
@@ -185,7 +221,6 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
     if(a==='pause')pause();
     if(a==='sound'){soundEnabled=!soundEnabled;write('titan.adventure.sound',soundEnabled);sfx.enable(soundEnabled);ping();pause();}
     if(a==='motion'){reduced=!reduced;write('titan.adventure.motion',reduced);pause();}
-    if(a==='help')showDialog('Let’s play!',`<ol class="simple-help"><li><b>Build:</b> Pick pictured parts. Keep mass and coins below the limits, and supply enough power. Then tap Ready for launch.</li><li><b>Launch:</b> Hold the launch button or Space.</li><li><b>Fly:</b> Watch your destination approach, or skip straight to landing.</li><li><b>Land:</b> Titan uses a shield and parachute. The Moon lands on legs under rocket power. Mars uses a heat shield, parachute and a rocket-powered sky crane.</li><li><b>Explore:</b> Drive or sail to glowing markers. Tap to discover! Three stations have hands-on mirror, spectrum and drill challenges.</li></ol><p>Research needs the right tools. Pack several instruments and check the five objectives before launch. Missing equipment is marked in yellow; repack and relaunch to reach more stations. Use arrows, WASD, or the touch arrows. Tap the scene to travel there. On Titan, choose calm Ligeia or drifting Kraken. Deploy stabilizers to hold position; retract them before sailing. Currents are simplified game forces, not measured sea conditions.</p><button class="play-button" data-game="close">Got it! →</button>`);
     if(a==='power-facts')showDialog('What powers a spacecraft?',`<p><b>Solar panels</b> turn sunlight into electricity. Small panels struggle far from the Sun.</p><p><b>Radioisotope generators</b> turn heat from radioactive decay into electricity, even in darkness.</p><p><b>Batteries</b> store energy and are useful for short missions or alongside a generator.</p><p class="fact-source">Our parts, masses, wattages and coins are illustrative game values. Battery time is an estimate, not a countdown.</p><a href="https://science.nasa.gov/learn/basics-of-space-flight/chapter11-3/" target="_blank" rel="noopener">Learn with NASA ↗</a><button class="play-button" data-game="close">Back to building →</button>`);
     if(!home&&state.stage==='assemble'){
       if(a==='build-tab'){buildTab=el.dataset.tab;renderBuilder(root,state.loadout,buildTab,state.destination);}
@@ -195,7 +230,7 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
       }
       if(a==='survey-kit'){state.loadout=surveyLoadout(state.destination);buildTab='science';persist();renderBuilder(root,state.loadout,buildTab,state.destination);toast('Full-survey kit prepared. Review every part before launch.');}
       if(a==='build-reset'){state.loadout=emptyLoadout();buildTab='rocket';persist();renderBuilder(root,state.loadout,buildTab,state.destination);ping(700);}
-      if(a==='build-ready'&&missionTotals(state.loadout,state.destination).ready&&discoveryCoverage(state.loadout,state.destination).some(d=>d.allowed)){state.parts=['floats','power','radio'];changeStage('launch');canvas.focus({preventScroll:true});}
+      if(a==='build-ready'&&launchPermission(missionTotals(state.loadout,state.destination))&&discoveryCoverage(state.loadout,state.destination).some(d=>d.allowed)){state.parts=['floats','power','radio'];changeStage('launch');canvas.focus({preventScroll:true});}
     }
     if(a==='action')action();
     if(a==='edit-build'&&!home&&state.stage==='launch'&&!launching){changeStage('assemble');canvas.focus({preventScroll:true});}
@@ -204,33 +239,40 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
     if(a==='freeplay'){closeDialog();state.stage='lake';transmitting=false;progress=0;persist();sync();}
   });
   on(infoPopup,'cancel',event=>{event.preventDefault();infoPopup.close();infoInvoker?.focus({preventScroll:true});});
-  on(popup,'cancel',event=>{event.preventDefault();keys.clear();held.clear();closeDialog();});
+  on(popup,'cancel',event=>{event.preventDefault();if(failure)return;keys.clear();held.clear();closeDialog();});
   function pointerDown(e){if(home||popup.open)return;const dir=e.target.closest('[data-direction]')?.dataset.direction;
     if(dir){e.preventDefault();held.set(e.pointerId,dir);e.target.setPointerCapture(e.pointerId);target=null;}
-    if(e.target.closest('#game-action')&&state.stage==='launch'){e.preventDefault();held.set(e.pointerId,'launch');e.target.setPointerCapture(e.pointerId);}
+    if(e.target.closest('#game-action')&&state.stage==='launch'){launchActivation=true;e.preventDefault();held.set(e.pointerId,'launch');e.target.setPointerCapture(e.pointerId);}
   }
   on(root,'pointerdown',pointerDown);on(root,'pointerup',e=>held.delete(e.pointerId));on(root,'pointercancel',e=>held.delete(e.pointerId));on(root,'lostpointercapture',e=>held.delete(e.pointerId));
-  on(canvas,'pointerdown',e=>{if(home||popup.open)return;const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(state.stage==='lake'&&!working&&!state.anchored&&!transmitting){target={x:clamp(camera+x/scale,80,2700),y:clamp(y/h,.6,.9)};}canvas.focus({preventScroll:true});});
+  on(canvas,'pointerdown',e=>{if(home||popup.open)return;const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left-viewport.offsetX)/viewport.fit,y=(e.clientY-r.top-viewport.offsetY)/viewport.fit;if(state.stage==='lake'&&!working&&!state.anchored&&!transmitting){target={x:clamp(camera+x/scale,80,2700),y:clamp(y/h,.6,.9)};}canvas.focus({preventScroll:true});});
   on(window,'keydown',e=>{if(home||document.querySelector('dialog[open]'))return;if(state.stage==='assemble'){if(e.key==='Escape')pause();return;}if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d','W','A','S','D',' '].includes(e.key)){
     // Preserve native Space/Enter activation on menu and dialog buttons.
     if(e.key===' '&&e.target instanceof HTMLButtonElement&&e.target.id!=='game-action')return;
-    e.preventDefault();keys.add(e.key.toLowerCase());target=null;if(e.key===' '&&!e.repeat)action();
+    e.preventDefault();keys.add(e.key.toLowerCase());target=null;if(e.key===' '&&!e.repeat&&state.stage!=='launch')action();
   }if(e.key==='Escape'){e.preventDefault();pause();}});
-  on(window,'keyup',e=>keys.delete(e.key.toLowerCase()));on(window,'blur',()=>{keys.clear();held.clear();});on(document,'visibilitychange',()=>{keys.clear();held.clear();last=0;if(!home)persist();});
+  on(window,'keyup',e=>keys.delete(e.key.toLowerCase()));on(window,'blur',()=>{blurred=true;keys.clear();held.clear();sfx.pause(true);});on(window,'focus',()=>{blurred=false;last=0;});on(document,'visibilitychange',()=>{keys.clear();held.clear();last=0;if(document.hidden)sfx.pause(true);if(!home)persist();});
+  on(root,'change',event=>{if(event.target.matches('[data-pilot-callsign],[data-callsign]'))state.callsign=cleanCallsign(event.target.value);else if(event.target.matches('[data-foil]'))state.accent=personalization({accent:event.target.value}).accent;else return;write('deepfrontier.personalization',personalization(state));persist();sync();});
+  on(root,'input',event=>{if(event.target.matches('[data-callsign],[data-pilot-callsign]')){state.callsign=cleanCallsign(event.target.value);write('deepfrontier.personalization',personalization(state));persist();}});
+  let wheelAngle=0;
+  function lunarLander(ctx,x,y,s,t,throttle=0,dust=0,options={}){renderLunarLander(ctx,x,y,s,t,throttle,dust,{...options,accent:FOIL_ACCENTS[state.accent]?.color});}
   function input(){const dirs=new Set(held.values());return {dx:Number(keys.has('arrowright')||keys.has('d')||dirs.has('right'))-Number(keys.has('arrowleft')||keys.has('a')||dirs.has('left')),dy:Number(keys.has('arrowdown')||keys.has('s')||dirs.has('down'))-Number(keys.has('arrowup')||keys.has('w')||dirs.has('up')),launch:keys.has(' ')||dirs.has('launch')};}
   function update(dt){
+    if(failure){if(advanceFailure(failure,dt))failureDialog();return;}
     deployment=Math.min(1,deployment+dt*2.4);
     const {dx,dy,launch}=input();touchdownShake=Math.max(0,touchdownShake-dt);saveTime+=dt;elapsed+=dt;if(elapsed>4)$('#game-toast').classList.remove('visible');
     if(home)return;
-    if(state.stage!=='assemble'&&!state.sent){state.missionSeconds+=dt;state.energyUsedWh+=missionTotals(state.loadout,state.destination).demand*dt/3600;}
+    if(state.stage!=='assemble'&&!state.sent)manageEnergy(state,missionTotals(state.loadout,state.destination),dt);
     if(state.stage==='launch'){
       if(!launching){progress=clamp(progress+(launch?dt*.45:-dt*.22),0,1);if(progress>=1){launching=true;launchTime=0;sfx.ignite();burst(w*.5,h*.78,'#e6c998',35);}}
       if(!launching&&Math.floor(progress*4)>launchTick){launchTick=Math.floor(progress*4);sfx.ping(220+launchTick*110);}
-      else if(launching){launchTime+=dt;if(launchTime>4.3)changeStage('cruise');}
+      else if(launching){launchTime+=dt;const shot=launchProfile(launchTime,missionTotals(state.loadout,state.destination));if(shot.failed){fail('launch',w*.5,h*.75-130-shot.rise);return;}if(launchTime>4.3)changeStage('cruise');}
     }
     if(state.stage==='cruise'){
-      filmTime+=dt;
-      if(filmTime>=CRUISE_SECONDS)changeStage('landing');
+      if(advanceTransit(state.transit,dt,dx,dy)){sfx.impact();if(!reduced)touchdownShake=.12;}
+      filmTime=state.transit.elapsed;
+      if(state.transit.destroyed){fail('transit',state.transit.x*w/1000,state.transit.y*h/600);return;}
+      if(filmTime>=state.transit.duration)changeStage('landing');
     }else if(state.stage==='landing'){
       const before=filmTime;filmTime+=dt;
       const contact=moon()?12:mars()?15:LANDING_SECONDS;
@@ -244,6 +286,7 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
       const previousX=state.x,previousY=state.y;
       if(!working&&!transmitting&&!state.anchored){if(dx||dy){moveExplorer(state,dx,dy,dt);direction=dx<0?-1:dx>0?1:direction;}else if(target){const diff=target.x-state.x,yd=(target.y-state.y)*850;if(Math.abs(diff)<7&&Math.abs(yd)<7)target=null;else{const distance=Math.hypot(diff,yd);moveExplorer(state,diff/distance,yd/distance,dt);direction=diff<0?-1:1;}}}
       if(!working&&!transmitting)applySurfaceCurrent(state,dt,time);
+      wheelAngle+=Math.hypot(state.x-previousX,(state.y-previousY)*850)/18*(state.x<previousX?-1:1);
       trails=updateTrails(trails,state,dt,Math.hypot(state.x-previousX,(state.y-previousY)*850)>.1,reduced);
       if(working){progress+=dt*(rocky()&&['quakes','marsquake'].includes(working)&&hasScience(state.loadout,'seismic')?.55:.37);if(progress>=1){const id=working;working=null;progress=0;awardDiscovery(id);}}
       if(transmitting){const radio=COMPONENTS.radio.find(item=>item.id===state.loadout.radio);progress+=dt/(2+140/radio.rate);if(progress>=1){if(finishAdventure(state)){persist();sync();burst(w*.5,h*.4,'#eed087',60);ending();}transmitting=false;progress=0;}}
@@ -295,14 +338,17 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
       if(!reduced)surfaceDust(c,x,targetY+25*s,s,t,shot.dust*(1-shot.release),true);c.restore();
     }
   }
-  function builderPosition(){const r=$('.builder-preview').getBoundingClientRect(),cr=canvas.getBoundingClientRect();return {x:r.left-cr.left+r.width/2,y:r.top-cr.top+Math.min(250,r.height*(w<=900?.38:.46)),s:clamp(r.width/340,.8,w<=900?.9:1.6)};}
+  function builderPosition(){const r=$('.builder-preview').getBoundingClientRect(),cr=canvas.getBoundingClientRect();return {x:(r.left-cr.left+r.width/2-viewport.offsetX)/viewport.fit,y:(r.top-cr.top+Math.min(250,r.height*.4)-viewport.offsetY)/viewport.fit,s:Math.min(1.6,r.width/340/viewport.fit)};}
   function draw(dt){
     // Re-establish the backing-store scale for every frame, including after a
     // hidden tab is restored or its display pixel ratio changes during flight.
-    c.setTransform(canvas.width/w,0,0,canvas.height/h,0,0);
-    c.globalAlpha=1;c.globalCompositeOperation='source-over';c.clearRect(0,0,w,h);
+    c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.fillStyle='#07131b';c.fillRect(0,0,canvas.width,canvas.height);
+    const cssWidth=canvas.width/viewport.dpr,cssHeight=canvas.height/viewport.dpr;
+    const renderFit=home?Math.max(cssWidth/w,cssHeight/h):viewport.fit;
+    const renderOffsetX=home?(cssWidth-w*renderFit)/2:viewport.offsetX,renderOffsetY=home?(cssHeight-h*renderFit)/2:viewport.offsetY;
+    c.setTransform(viewport.dpr*renderFit,0,0,viewport.dpr*renderFit,renderOffsetX*viewport.dpr,renderOffsetY*viewport.dpr);c.save();c.beginPath();c.rect(0,0,w,h);c.clip();
     const t=reduced?0:time;const stage=home?'home':state.stage;
-    c.save();if(!reduced){const shake=launching?2.4:touchdownShake*5;c.translate(Math.sin(t*61)*shake,Math.cos(t*73)*shake*.6);}
+    c.save();if(!reduced){const shake=failure?explosionPhase(failure.elapsed).shake:launching?2.4:touchdownShake*5;c.translate(Math.sin(t*61)*shake,Math.cos(t*73)*shake*.6);}
     if(['home','lake','landing','done'].includes(stage)){
       if(stage==='lake'||stage==='done'){const desired=clamp(state.x-w/scale*.4,0,Math.max(0,2800-w/scale));camera+=(desired-camera)*Math.min(1,dt*5);}else camera=0;
       if(mars())marsScenery(c,w,h,t,camera*scale,scale);else if(moon())lunarLandscape(c,w,h,t,camera*scale,{unit:scale});else landscape(c,w,h,t,camera*scale,{rain:stage==='lake'&&state.x>1350&&state.x<1770,still:reduced});
@@ -353,6 +399,7 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
           if(!done){c.textAlign='center';c.font=`600 ${Math.max(11,12*scale)}px sans-serif`;const tw=c.measureText(d.label).width;box(c,x-tw/2-12,by-58*scale,tw+24,25,8,'#253f38de');c.fillStyle='#ffedbb';c.fillText(d.label,x,by-40*scale);}
         }
         const px=(state.x-camera)*scale,py=state.y*h;const moving=!state.anchored&&!!(input().dx||input().dy||target);
+        if(surfaceLighting(state).headlights)lunarHeadlights(c,w,h,px,py,scale,direction);
         if(target){ellipse(c,(target.x-camera)*scale,target.y*h,18+Math.sin(t*5)*4,7,null,'#fff1bc');}
         if(state.anchored&&!rocky())for(const side of [-1,1]){
           path(c,[[px+side*55*scale,py+15*scale],[px+side*98*scale,py+34*scale]],null,'#d5bd83');
@@ -376,36 +423,36 @@ function journal(){showDialog('My discovery journal',`<p>Five little wonders. On
       hangar(c,pos.x,pos.y,pos.s,t);
       ellipse(c,pos.x,pos.y-45,150*pos.s,115*pos.s,'#c5dfc307','#e5dca42e');ellipse(c,pos.x,pos.y+45*pos.s,126*pos.s,24*pos.s,'#213b3b');ellipse(c,pos.x,pos.y+40*pos.s,126*pos.s,18*pos.s,'#6d8b76','#b1b58c');
       if(buildTab==='rocket'){
-        if(state.loadout.rocket)rocket(c,pos.x,pos.y-25*pos.s,pos.s*.89,t,0,state.loadout.rocket);
+        if(state.loadout.rocket)rocket(c,pos.x,pos.y-25*pos.s,pos.s*.89,t,0,state.loadout.rocket,false,FOIL_ACCENTS[state.accent]?.color);
         else{c.save();c.setLineDash([5,7]);box(c,pos.x-31*pos.s,pos.y-130*pos.s,62*pos.s,190*pos.s,24*pos.s,null,'#b8cba77a');c.restore();c.fillStyle='#e7dcaa';c.textAlign='center';c.font='600 13px sans-serif';c.fillText('Choose your rocket',pos.x,pos.y-20);}
       }else explorer(c,pos.x,pos.y+Math.sin(t)*3,pos.s,t,{parts:['floats',...(state.loadout.power?['power']:[]),...(state.loadout.radio?['radio']:[])],loadout:state.loadout,destination:world().id,deploy:reduced?1:1-(1-deployment)**3});
       for(let i=0;i<3;i++){const a=t*.3+i*2.1;star(c,pos.x+Math.cos(a)*150*pos.s,pos.y-35+Math.sin(a)*80*pos.s,4,'#e7dcaa66');}
     }else if(stage==='launch'){
       const padScale=Math.min(scale,h/550);
-      const offset=launching?Math.min(1,launchTime/3):0;
+      const totals=missionTotals(state.loadout,state.destination),overloaded=totals.mass>totals.capacity;
+      const offset=launching?(overloaded?launchProfile(launchTime,totals).rise/700:Math.min(1,launchTime/3)):0;
       const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,offset>.6?'#192d40':'#628e98');g.addColorStop(1,'#e1c69b');c.fillStyle=g;c.fillRect(0,0,w,h);
       for(let i=0;i<7;i++){const x=((i*w/4+t*(3+i%3))%(w+300))-150,y=h*.27+i%3*70+offset*h*.9;cloud(c,x,y,.65+i%3*.25,.38+i%2*.18);}
       const ground=h*.75+offset*h;
       launchStation(c,w,h,padScale,t,{offset,ignition:launching?1:progress*.75,countdown:launching?0:Math.max(0,3-progress*3),lift:launching?launchTime:0});
       const rocketHeight=state.loadout.rocket==='titan'?1.1:state.loadout.rocket==='scout'?.74:1;
       const ry=h*.75-84*padScale*1.55*rocketHeight-8-offset*h*.75;
-      rocket(c,w*.5+(reduced?0:Math.sin(time*40)*progress),ry,padScale*1.55,t,launching?1:progress*.5,state.loadout.rocket,true);
+      if(!failure)rocket(c,w*.5+(reduced?0:Math.sin(time*40)*progress),ry,padScale*1.55,t,launching?1:progress*.5,state.loadout.rocket,true,FOIL_ACCENTS[state.accent]?.color);
       if(!launching){cloud(c,w*.5-50-Math.sin(t)*20,ground-16,.4,.2);cloud(c,w*.5+40+Math.sin(t)*30,ground-12,.5,.18);}
       if(launching){for(let i=0;i<8;i++){const u=(t*.8+i/8)%1;cloud(c,w*.5+(i%2?1:-1)*u*210*scale,ground+(12-u*24)*scale,(.25+u*.75)*scale,(1-u)*.65);}}
     }else if(stage==='cruise'){
-      const u=filmTime/CRUISE_SECONDS;
-      if(mars())marsScenery(c,w,h,t,0,scale,{orbit:true});else if(moon())lunarLandscape(c,w,h,t,0,{orbit:true});else space(c,w,h,t,reduced?0:u*210);
-      if(rocky())lunarLander(c,w*(reduced?.48:.12+.69*u),h*(.48-.08*Math.sin(u*Math.PI)),scale*.8,t,u<.2?.2:0);else drawCapsule(w*(reduced?.48:.12+.69*u),h*(.56-.12*Math.sin(u*Math.PI)),true);
+      transitArt(c,w,h,state.transit,t,{...input(),reduced,accent:FOIL_ACCENTS[state.accent]?.color});
     }
     if(['home','lake','landing','done'].includes(stage))environmentVignette(c,w,h,t,world().id,reduced);
     c.restore();
     if(!reduced){for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=100*dt;p.life-=dt;c.globalAlpha=Math.max(0,p.life);star(c,p.x,p.y,4,p.color);}c.globalAlpha=1;particles=particles.filter(p=>p.life>0);}else particles=[];
+    if(failure)drawFailure(c,failure,reduced);c.restore();
   }
-  function frame(now){if(disposed)return;const dt=last?clamp((now-last)/1000,0,.05):0;last=now;const paused=document.hidden||!!document.querySelector('dialog[open]');if(!paused){time+=dt;update(dt);}sfx.update({launch:!home&&state.stage==='launch'?(launching?1:progress*.65):0,descent:!home&&rocky()&&state.stage==='landing'?(mars()?marsArrival:lunarArrival)(filmTime).throttle:0,transmitting,paused:paused||home,time});if(!document.hidden)draw(paused?0:dt);raf=requestAnimationFrame(frame);}
+  function frame(now){if(disposed)return;const dt=last?clamp((now-last)/1000,0,!home&&state.stage==='cruise'?30:.05):0;last=now;const paused=blurred||document.hidden||!!document.querySelector('dialog[open]');if(!paused){time+=dt;update(dt);}sfx.update({launch:!failure&&!home&&state.stage==='launch'?(launching?1:progress*.65):0,descent:!home&&rocky()&&state.stage==='landing'?(mars()?marsArrival:lunarArrival)(filmTime).throttle:0,rcs:state.stage==='cruise'&&!!(input().dx||input().dy),strain:state.stage==='launch'&&missionTotals(state.loadout,state.destination).mass>missionTotals(state.loadout,state.destination).capacity,transmitting,paused:paused||!!document.querySelector('dialog[open]'),time,destination:world().id});if(!document.hidden)draw(paused?0:dt);raf=requestAnimationFrame(frame);}
   if(callbacks.launchLoadout){
     state=freshAdventure();state.loadout={...callbacks.launchLoadout};
     state.parts=['floats','power','radio'];state.stage='launch';home=false;persist();
   }
   reduced=read('titan.adventure.motion',reduced)===true;sync();raf=requestAnimationFrame(frame);
-  return ()=>{miniDispose?.();disposed=true;cancelAnimationFrame(raf);observer.disconnect();abort.abort();sfx.close();if(!home)persist();if(popup.open)popup.close();if(infoPopup.open)infoPopup.close();};
+  return ()=>{if(disposed)return;miniDispose?.();miniDispose=null;particles=[];trails=[];held.clear();keys.clear();disposed=true;cancelAnimationFrame(raf);observer.disconnect();abort.abort();sfx.close();if(!home)persist();if(popup.open)popup.close();if(infoPopup.open)infoPopup.close();popup.replaceChildren();infoPopup.replaceChildren();};
 }

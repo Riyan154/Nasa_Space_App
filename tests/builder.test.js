@@ -5,7 +5,7 @@ import {freshAdventure,restoreAdventure,discoveryCoverage} from '../src/adventur
 import {CATALOG} from '../src/catalog.js';
 test('empty builder starts at zero mass and cost with its free core explicitly accounted for',()=>{
  const state=freshAdventure(),t=missionTotals(state.loadout);
- assert.deepEqual(state.loadout,emptyLoadout());assert.equal(t.mass,0);assert.equal(t.cost,0);assert.equal(BUILDER_LIMITS.budget-t.cost,300);
+ assert.deepEqual(state.loadout,emptyLoadout());assert.equal(t.mass,0);assert.equal(t.cost,0);assert.equal(BUILDER_LIMITS.budget-t.cost,325);
  assert.equal(t.demand,10);assert.equal(t.items.length,1);assert.equal(t.items[0].id,'core');assert.equal(CORE_CHASSIS.cost,0);assert.equal(t.missing.length,4);assert.equal(t.ready,false);
  assert.deepEqual(restoreAdventure(state),state);
 });
@@ -15,15 +15,15 @@ test('exactly three kid-named rockets expose the same lift and prices in both ca
  assert.equal(validLoadout({...DEFAULT_LOADOUT,rocket:'horizon'}),false);
  assert.equal(restoreAdventure({...freshAdventure(),loadout:{...DEFAULT_LOADOUT,rocket:'horizon'}}).loadout.rocket,'titan');
 });
-test('all single-tool combinations account for every installed item and enforce the 300 MC budget',()=>{
+test('all single-tool combinations account for every installed item and enforce the 325 MC budget',()=>{
  let count=0;
  for(const rocket of COMPONENTS.rocket)for(const power of COMPONENTS.power)for(const science of COMPONENTS.science)for(const radio of COMPONENTS.radio){
   const design={rocket:rocket.id,power:power.id,science:science.id,radio:radio.id},t=missionTotals(design);
   assert.equal(t.mass,power.mass+science.mass+radio.mass);assert.equal(t.cost,rocket.cost+power.cost+science.cost+radio.cost);
-  assert.equal(t.demand,CORE_CHASSIS.draw+science.draw+radio.draw);assert.equal(t.ready,t.mass<=rocket.capacity&&t.cost<=300&&t.supply>=t.demand);count++;
+  assert.equal(t.demand,CORE_CHASSIS.draw+science.draw+radio.draw);assert.equal(t.ready,t.mass<=rocket.capacity&&t.cost<=325&&t.supply>=t.demand);count++;
  }
  assert.equal(count,252);
- const expensive=missionTotals({rocket:'titan',power:'hybrid',science:'lab',radio:'array'});assert.ok(expensive.cost>300);assert.equal(expensive.ready,false);
+ const expensive=missionTotals({rocket:'titan',power:'hybrid',science:'lab',radio:'array'});assert.ok(expensive.cost>325);assert.equal(expensive.ready,false);
 });
 test('multiple science tools add mass, credits and watts exactly once and can be removed',()=>{
  let loadout={...DEFAULT_LOADOUT};loadout=toggleScience(loadout,'ground_radar');loadout=toggleScience(loadout,'magnetometer');
@@ -37,7 +37,7 @@ test('multiple science tools add mass, credits and watts exactly once and can be
 test('every destination has an affordable full-survey payload and power responds to sunlight',()=>{
  for(const destination of ['titan','moon','mars']){
   const loadout=surveyLoadout(destination),t=missionTotals(loadout,destination);assert.equal(t.ready,true);assert.equal(discoveryCoverage(loadout,destination).filter(d=>d.allowed).length,5);
-  assert.ok(t.cost<=300);assert.ok(t.mass<=t.capacity);assert.deepEqual(restoreAdventure({...freshAdventure(destination),loadout}).loadout,loadout);
+  assert.ok(t.cost<=325);assert.ok(t.mass<=t.capacity);assert.deepEqual(restoreAdventure({...freshAdventure(destination),loadout}).loadout,loadout);
  }
  const kit={...DEFAULT_LOADOUT,power:'solar',science:'seismic'};
  assert.equal(missionTotals(kit,'moon').supply,180);assert.equal(missionTotals(kit,'moon',true).supply,0);assert.equal(missionTotals(kit,'mars').supply,95);
@@ -46,7 +46,7 @@ test('every destination has an affordable full-survey payload and power responds
 });
 test('large tool stacks require real mass and price tradeoffs; battery endurance uses full payload draw',()=>{
  const kit={rocket:'scout',power:'hybrid',radio:'array',science:'lab',scienceTools:COMPONENTS.science.map(p=>p.id)},t=missionTotals(kit);
- assert.ok(t.mass>170);assert.ok(t.cost>300);assert.equal(t.ready,false);assert.match(t.issues.join(' '),/heavy/);
+ assert.ok(t.mass>170);assert.ok(t.cost>325);assert.equal(t.ready,false);assert.match(t.issues.join(' '),/heavy/);
  const battery=missionTotals({...DEFAULT_LOADOUT,power:'battery'});assert.equal(battery.hours,600/battery.demand);
 });
 test('partial choices, old saves and multi-instrument arrays migrate without aliases or shared arrays',()=>{

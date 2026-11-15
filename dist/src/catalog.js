@@ -11,7 +11,7 @@ export function instrumentForDestination(id,destination='titan'){
   return part?.id==='seismic'&&destination==='moon'?{...part,science:45,data:90,description:'Ground-coupled seismometer measures moonquakes and reveals subsurface structure.',limitation:'Needs firm contact with regolith.'}:part;
 }
 export const DIFFICULTIES = {
-  cadet: { name: 'Cadet', budget: 300, wind: 0.07, description: 'Room to experiment. Your first expedition.' },
+  cadet: { name: 'Cadet', budget: 325, wind: 0.07, description: 'Room to experiment. Your first expedition.' },
   explorer: { name: 'Explorer', budget: 260, wind: 0.13, description: 'A tighter budget. Every choice counts.' },
   architect: { name: 'Architect', budget: 225, wind: 0.20, description: 'Lean engineering. A demanding landing.' }
 };

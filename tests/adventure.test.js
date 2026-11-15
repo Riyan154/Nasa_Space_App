@@ -37,7 +37,7 @@ test('the full lake journey earns all five facts before a successful transmissio
 
 import {arrival,CRUISE_SECONDS,LANDING_SECONDS} from '../src/titan-flight.js';
 test('arrival transitions from plasma to inflated canopy to floating explorer',()=>{
-  assert.equal(CRUISE_SECONDS,18);
+  assert.equal(CRUISE_SECONDS,30);
   assert.ok(arrival(1.6).heat>.99);
   assert.equal(arrival(5).canopy,1);assert.equal(arrival(5).reveal,1);
   assert.equal(arrival(LANDING_SECONDS).ripple,1);assert.equal(arrival(LANDING_SECONDS).canopy,0);

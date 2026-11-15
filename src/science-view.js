@@ -12,7 +12,7 @@ export function scienceMarkup(kind){
     <button type="button" class="play-button science-save" data-science-save disabled>Complete the experiment first</button>
   </section>`;
 }
-export function mountScienceGame(host,kind,{reduced=false,onComplete=()=>{},onCue=()=>{},onActive=()=>{}}={}){
+export function mountScienceGame(host,kind,{reduced=false,onComplete=()=>{},onCue=()=>{},onActive=()=>{},onHazard=()=>{}}={}){
   const game=createScienceGame(kind),root=host.querySelector('.science-game'),canvas=root.querySelector('canvas'),c=canvas.getContext('2d');
   const abort=new AbortController(),{signal}=abort;let frameId=0,last=0,disposed=false,round=0,oldPhase='align',message='';
   const $=selector=>root.querySelector(selector);
@@ -97,7 +97,7 @@ export function mountScienceGame(host,kind,{reduced=false,onComplete=()=>{},onCu
     if(!document.hidden){
       // Fixed small integration steps retain stable pressure/heat while visible
       // timers keep pace on lower-frame-rate screens. Hidden tabs reset last.
-      for(let remaining=dt;remaining>0;remaining-=.05)advanceScience(game,Math.min(.05,remaining));
+      for(let remaining=dt;remaining>0;remaining-=.05){const wasHot=game.venting;advanceScience(game,Math.min(.05,remaining));if(wasHot!==game.venting)onHazard(game.venting);}
       if(!game.complete)onActive(dt);
       if(round!==game.round){round=game.round;onCue(880);}
       if(oldPhase!==game.phase){oldPhase=game.phase;onCue(880);}

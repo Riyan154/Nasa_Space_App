@@ -1,11 +1,13 @@
-import { COMPONENTS, BUILDER_LIMITS, missionTotals, scienceTools, scienceWarning } from './builder-model.js';
+import { COMPONENTS, BUILDER_LIMITS, missionTotals, scienceTools } from './builder-model.js';
 import {discoveryCoverage} from './adventure-model.js';
 import { componentArt } from './adventure-art.js';
+import {launchPermission} from './builder-model.js';
+import {FOIL_ACCENTS} from './flight-systems.js';
 
 export const BUILD_TABS = [['rocket','Rocket','Launch Vehicle'],['power','Power','Energy Source'],['science','Science','Discovery Tools'],['radio','Radio','Communications']];
 export function builderMarkup(){
   return `<section id="mission-builder" class="mission-builder" aria-label="Spacecraft builder" hidden>
-    <div id="builder-mobile-status" class="builder-mobile-status" aria-hidden="true"></div><section class="builder-parts"><div class="builder-eyebrow">MAKE PIP YOURS</div><div class="builder-tabs" role="group" aria-label="Spacecraft sections">${BUILD_TABS.map(([id,label])=>`<button data-game="build-tab" data-tab="${id}" aria-pressed="${id==='rocket'}">${label}</button>`).join('')}</div><div id="builder-options"></div></section>
+    <div id="builder-mobile-status" class="builder-mobile-status" aria-hidden="true"></div><section class="builder-parts"><div class="builder-eyebrow">MAKE PIP YOURS</div><div class="personalization"><label>Explorer callsign <input data-callsign maxlength="12" pattern="[A-Za-z0-9]{1,12}" value="Pip" aria-label="Explorer callsign"></label><label>Thermal foil <select data-foil aria-label="Thermal foil accent">${Object.entries(FOIL_ACCENTS).map(([id,a])=>`<option value="${id}">${a.name}</option>`).join('')}</select></label></div><div class="builder-tabs" role="group" aria-label="Spacecraft sections">${BUILD_TABS.map(([id,label])=>`<button data-game="build-tab" data-tab="${id}" aria-pressed="${id==='rocket'}">${label}</button>`).join('')}</div><div id="builder-options"></div></section>
     <div class="builder-preview"><span class="preview-label"><i></i> LIVE SPACECRAFT</span><div class="preview-callouts" id="preview-callouts"></div><div class="preview-caption"><b id="preview-part-name"></b><span>Tap a part card. Watch Pip change.</span></div><div class="builder-launch"><button class="play-button" data-game="build-ready">Ready for launch <span>↑</span></button><button class="builder-reset" data-game="build-reset">Clear my choices ↺</button></div></div>
     <aside class="builder-summary" aria-label="Mission resources"><div class="builder-eyebrow">MISSION CHECK</div><div id="builder-meters" aria-live="polite"></div><p class="builder-verdict" id="builder-verdict" role="status"></p><section id="builder-coverage" class="builder-coverage" aria-label="Science objectives"></section><button class="builder-survey" data-game="survey-kit">Prepare a full-survey kit →</button><div class="core-chassis-card"><span aria-hidden="true">▣</span><div><b>Pip Core Chassis</b><small>Included free · 0 kg · 0 MC · 10 W</small></div><span aria-label="Installed">✓</span></div><p class="builder-facts">Mass, watts & coins are game values.</p><button class="builder-source" data-game="power-facts">How does space power work? ↗</button></aside>
   </section>`;
@@ -33,8 +35,9 @@ export function renderBuilder(root,loadout,tab,destination='titan',focusedId=nul
   root.querySelector('#builder-coverage').innerHTML='<b>'+covered+' / 5 discoveries equipped</b><ul>'+coverage.map(d=>'<li class="'+(d.allowed?'equipped':'missing')+'">'+(d.allowed?'✓ ':'○ ')+d.label+'<small>'+(d.allowed?'Tool installed':d.name)+'</small></li>').join('')+'</ul>';
   const warnings=totals.warnings;
   if(warnings.length)root.querySelector('.component-explanation').textContent=(selected?.detail||'')+' '+warnings.join(' ');
-  root.querySelector('[data-game="build-ready"]').textContent=covered===5?'Ready for full survey ↑':'Launch with '+covered+'/5 objectives ↑';
-  root.querySelector('[data-game="build-ready"]').disabled=!totals.ready||covered===0;
+  const overweight=totals.capacity>0&&totals.mass>totals.capacity,launch=root.querySelector('[data-game="build-ready"]');
+  launch.textContent=overweight?'Launch Anyway (Overweight ⚠️)':covered===5?'Ready for full survey ↑':'Launch with '+covered+'/5 objectives ↑';
+  launch.classList.toggle('overweight-launch',overweight);launch.disabled=!launchPermission(totals)||covered===0;
   if(totals.ready&&covered===0)verdict.textContent='Add a tool for at least one discovery before launch. The full-survey kit equips all five.';
   root.querySelector('#preview-part-name').textContent=selected?.name||`Choose your ${section[1].toLowerCase()}`;
   root.querySelector('#preview-callouts').innerHTML=BUILD_TABS.map(([group,label])=>{const item=totals.items.find(item=>item.group===group);const labelText=group==='science'&&ids.length?ids.length+' tools installed':item?.name;return `<button class="craft-label label-${group} ${tab===group?'selected':''}" data-game="build-tab" data-tab="${group}"><small>${label.toUpperCase()}</small>${labelText||'＋ Choose a part'}</button>`;}).join('');

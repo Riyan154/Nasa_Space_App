@@ -240,6 +240,8 @@ export function launchStation(c,w,h,s,t,{offset=0,ignition=0,lift=0,countdown=3}
     const x=side*(129+i*35);box(c,x-3,21,6,13,1,'#dcb779');ellipse(c,x,20,2,2,'#ffe7a9');
   }
   sign(c,'PAD 01',-77,26,54);
+  // Laminated blast deflectors, cable conduits and thermal shimmer above the trench.
+  for(const side of [-1,1]){box(c,side*145-15,10,30,25,3,'#a8ae98','#354d49');for(let j=0;j<4;j++)path(c,[[side*145-12+j*7,12],[side*145-5+j*7,30]],null,j%2?'#384e48':'#efcc77');if(ignition>0)for(let j=0;j<8;j++){const u=(t*1.8+j/8)%1;cloud(c,side*(70+u*140),25-u*35,.15+u*.32,(1-u)*ignition*.4);path(c,[[side*(45+j*9),12],[side*(45+j*9)+Math.sin(t*24+j)*4,30]],null,'#ffe3ad22');}}
   // Shielded range clock: fixed legible digits rather than a flickering meter.
   path(c,[[-211,12],[-211,-43],[-156,-43],[-156,12]],null,'#9aaf95');
   box(c,-220,-77,74,36,4,'#20373b','#b7b99a');
