@@ -3,7 +3,7 @@
 GAME_FOLDER="${0:A:h}"
 GAME_URL="http://127.0.0.1:4173/"
 NODE_BIN="/Users/riyan/.nvm/versions/node/v26.13.1/bin/node"
-LOG_FILE="/tmp/titan-deep-frontier-server.log"
+LOG_FILE="/tmp/deep-frontier-server.log"
 
 cd "$GAME_FOLDER" || exit 1
 

@@ -15,7 +15,7 @@ Open **http://127.0.0.1:4173** in your browser. No `npm install` is needed: the 
 On this Mac, the full command is:
 
 ```sh
-cd /Users/riyan/Desktop/Nasa_Space_App_Codes_Codex/titan-deep-frontier
+cd /Users/riyan/Desktop/Nasa_Space_App_Codes_Codex/deep-frontier
 npm start
 ```
 
