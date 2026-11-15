@@ -16,7 +16,8 @@ let briefing = { difficulty: 'cadet', lake: 'ligeia' };
 let settings = { sound: false, reducedMotion: false, ...read('titan.settings.v1', {}) };
 let countdownTimer;
 let countdown = null;
-let nasaImages = null;
+let nasaImages = {};
+let scienceDestination='titan',scienceRequest=0;
 let nasaDatasets = null;
 let lastFocused = null;
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -34,7 +35,7 @@ function notify(message) {
 function persist() { if (mission && !saveMission(mission)) notify('Your browser cannot save right now. Keep this tab open to continue your mission.'); }
 function go(next) { screen = next === 'home' ? 'arcade' : next; render(); window.scrollTo({ top: 0, behavior: 'instant' }); const heading = app.querySelector('h1'); heading?.focus({ preventScroll: true }); }
 function header() {
-  return `<header class="topbar"><button class="brand" data-action="home" aria-label="Titan home"><span class="brand-mark">T<span>✦</span></span><span>TITAN<span class="brand-sub">DEEP FRONTIER</span></span></button><nav aria-label="Game menu">${button('science', `${icon('book', 17)} <span>Science lab</span>`, 'nav-button', 'aria-label="Science lab"')}${button('archive', `${icon('archive', 17)} <span>Mission archive</span>`, 'nav-button', 'aria-label="Mission archive"')}<span class="nav-divider"></span>${button('settings', icon('settings', 20), 'icon-button', 'aria-label="Settings"')}</nav></header>`;
+  return `<header class="topbar"><button class="brand" data-action="home" aria-label="Deep Frontier home"><span class="brand-mark">T<span>✦</span></span><span>Deep Frontier</span></button><nav aria-label="Game menu">${button('science', `${icon('book', 17)} <span>Science lab</span>`, 'nav-button', 'aria-label="Science lab"')}${button('archive', `${icon('archive', 17)} <span>Mission archive</span>`, 'nav-button', 'aria-label="Mission archive"')}<span class="nav-divider"></span>${button('settings', icon('settings', 20), 'icon-button', 'aria-label="Settings"')}</nav></header>`;
 }
 function footer() { return `<footer><span><i class="status-dot"></i> A SMALL EXPLORER. AN EXTRAORDINARY WORLD.</span><span>Original game artwork <span class="footer-dot">·</span> Inspired by NASA science</span>${button('help', 'How to play ↗', 'text-button')}</footer>`; }
 function home() {
@@ -98,7 +99,7 @@ function render() {
   }
   if(screen === 'arcade') {
     app.innerHTML = adventureMarkup();
-    disposeAdventure = mountAdventure(app, {science:showScience, workshop:()=>go('lab'), launchLoadout, reducedMotion:settings.reducedMotion});
+    disposeAdventure = mountAdventure(app, {science:destination=>showScience(false,destination), workshop:()=>go('lab'), launchLoadout, reducedMotion:settings.reducedMotion});
     launchLoadout=null;
     return;
   }
@@ -126,12 +127,14 @@ function showTelemetry() {
   const trace=samples.filter((_,i)=>i%Math.max(1,Math.floor(samples.length/60))===0).map((s,i,arr)=>`${20+i/(arr.length-1||1)*540},${130-clamp(s.velocity/5200,0,1)*110}`).join(' ');
   modal('Mission telemetry',`<p class="warning-note">Simulated mission data. Cruise distance and travel time are narrative approximations; entry uses a simplified vertical-column model.</p><div class="telemetry-metrics"><div><strong>${f.elapsedYears}</strong><span>years traveled</span></div><div><strong>${(f.distance/1e9).toFixed(2)}B</strong><span>km traveled</span></div><div><strong>${Math.round(f.energy)}</strong><span>Wh in battery</span></div><div><strong>${Math.round(f.temperature)}</strong><span>internal temperature, K</span></div></div>${e?`<h3>Descent velocity · simulated m/s</h3><svg class="telemetry-chart" viewBox="0 0 580 150" role="img" aria-label="Velocity decreases during descent"><path d="M20 10v120h540" stroke="#5a6a71" fill="none"/><polyline points="${trace}" fill="none" stroke="#93d3c2" stroke-width="2"/></svg><p>Splashdown: ${e.velocity.toFixed(2)} m/s · Heating: ${(e.heat/1e6).toFixed(2)} MJ/m² · Peak shield surface: ${Math.round(e.peakTemperature)} K</p><p>Heat protection used: ${(e.heatRatio*100).toFixed(0)}% · Parachute: ${e.torn?'torn':'deployed'} · Descent duration: ${(e.duration/3600).toFixed(2)} simulated hours.</p>`:''}<p>Communication: ${mission.design.comms ? 'antenna available' : 'unavailable'}. Interplanetary signals take roughly an hour or more each way, depending on orbital geometry; this game compresses that delay.</p><h3>Mission log</h3><ol class="mission-log">${f.log.map(event=>`<li><small>${escape(event.kind)}</small>${escape(event.text)}</li>`).join('')}</ol>`,true);
 }
-async function showScience(forceRefresh = false) {
+async function showScience(forceRefresh = false,destination='titan') {
+  scienceDestination=['moon','mars'].includes(destination)?destination:'titan';destination=scienceDestination;const request=++scienceRequest;
   modal('The real world behind the adventure',`<div class="science-facts"><article><span>94 K</span><h3>A beautifully cold world.</h3><p>Titan’s surface is around −179°C. Its lakes hold liquid methane and ethane, not water.</p></article><article><span>1.35 m/s²</span><h3>A lighter kind of landing.</h3><p>Low gravity and a dense atmosphere help parachutes slow a descending spacecraft.</p></article><article><span>≈ 1.5×</span><h3>A thicker atmosphere.</h3><p>Surface pressure is about 1.5 times Earth’s. Most of the atmosphere is nitrogen.</p></article></div><p>Our lake explorer is fictional. NASA’s real <a href="https://science.nasa.gov/mission/dragonfly/" target="_blank" rel="noopener">Dragonfly mission</a> is a rotorcraft. An MMRTG turns radioactive-decay heat into electricity; its rechargeable battery is a separate component.</p><div class="source-links"><a href="https://science.nasa.gov/saturn/moons/titan/facts/" target="_blank" rel="noopener">Titan facts ↗</a><a href="https://science.nasa.gov/mission/cassini/" target="_blank" rel="noopener">Cassini–Huygens ↗</a></div><details><summary>How the game models Titan</summary><p>Drag = ½ρv²CdA. Air density decreases exponentially with altitude. Entry heating uses a simplified density-and-speed relation. A hull floats when displaced liquid weighs more than the lander, with a 12% reserve. Wind and density differences between sites are fictional scenarios, not measured weather. Solar outputs already include a severe Titan-light penalty. Each observation and data unit is simulated.</p><p>The game is a vertical entry and energy-management model, not flight-qualified mission software. Saturn appears in the artwork for atmosphere; the view is artistic, not a precise surface sky reconstruction.</p></details><h3 class="gallery-title">Through NASA’s eyes</h3><p id="image-status" role="status">Connecting to NASA’s Image and Video Library…</p><div id="nasa-gallery" class="nasa-gallery"></div><h3>Explore the planetary archive</h3><p id="dataset-status" role="status">Looking for Titan records…</p><div id="nasa-datasets"></div>${button('refresh-science','Refresh NASA sources','secondary')}`,true);
+  if(destination!=='titan')modal(`NASA ${destination==='moon'?'Moon':'Mars'} Image Gallery`,`<p>Explore ${destination==='moon'?'Apollo, Artemis and Lunar Reconnaissance Orbiter':'Perseverance, Curiosity and Jezero Crater'} through NASA’s Image and Video Library. Image types and credits come from the original metadata.</p><p id="image-status" role="status">Connecting to NASA…</p><div id="nasa-gallery" class="nasa-gallery"></div><p id="dataset-status" hidden></p><div id="nasa-datasets" hidden></div>${button('refresh-science','Refresh NASA sources','secondary')}`,true);
   const datasetOptions = ['127.0.0.1','localhost'].includes(location.hostname) ? { endpoint: '/api/pds', forceRefresh } : { forceRefresh };
-  const [images,datasets]=await Promise.all([forceRefresh ? loadImages({ forceRefresh: true }) : nasaImages || loadImages(), forceRefresh ? loadDatasets(datasetOptions) : nasaDatasets || loadDatasets(datasetOptions)]);
-  nasaImages=images; nasaDatasets=datasets;
-  if (!dialog.open || !dialog.querySelector('#nasa-gallery')) return;
+  const [images,datasets]=await Promise.all([forceRefresh ? loadImages({ forceRefresh: true,destination }) : nasaImages[destination] || loadImages({destination}), destination==='titan'?(forceRefresh ? loadDatasets(datasetOptions) : nasaDatasets || loadDatasets(datasetOptions)):Promise.resolve({items:[],message:''})]);
+  nasaImages[destination]=images;if(destination==='titan')nasaDatasets=datasets;
+  if (request!==scienceRequest||!dialog.open || !dialog.querySelector('#nasa-gallery')) return;
   dialog.querySelector('#image-status').textContent=images.message;
   dialog.querySelector('#dataset-status').textContent=datasets.message;
   dialog.querySelector('#nasa-gallery').innerHTML=images.items.map(item=>`<article><a href="${escape(item.source)}" target="_blank" rel="noopener"><img src="${escape(item.url)}" alt="${escape(item.title)}" loading="lazy"><h4>${escape(item.title)}</h4></a><p>${escape(item.description)}</p><small>NASA library · ${escape(item.credit)}<br>${escape(item.kind || 'NASA image (see source for type)')}</small></article>`).join('');
@@ -166,7 +169,7 @@ function handleClick(event) {
   const action=target.dataset.action;sound();
   if(action==='close')return closeModal();
   if(action==='science')return void showScience();
-  if(action==='refresh-science'){nasaImages=null;nasaDatasets=null;return void showScience(true);}
+  if(action==='refresh-science'){delete nasaImages[scienceDestination];nasaDatasets=null;return void showScience(true,scienceDestination);}
   if(action==='archive')return showArchive();
   if(action==='settings')return showSettings();
   if(action==='help')return showHelp();

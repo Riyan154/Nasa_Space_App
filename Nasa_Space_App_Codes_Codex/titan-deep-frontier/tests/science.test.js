@@ -39,11 +39,11 @@ function seaState(sea='ligeia'){return {...freshAdventure('titan',sea),stage:'la
 test('Kraken drifts more strongly, stabilizers hold position, and solid worlds have no sea drift',()=>{
   const gentle=seaState(),strong=seaState('kraken');
   for(let i=0;i<200;i++){applySurfaceCurrent(gentle,.05,i*.05);applySurfaceCurrent(strong,.05,i*.05);}
-  assert.ok(strong.x-500>(gentle.x-500)*4);
+  assert.ok(500-strong.x>(500-gentle.x)*4);assert.ok(strong.y>.75);assert.ok(gentle.y>.75);
   strong.anchored=true;const before=structuredClone(strong);for(let i=0;i<50;i++)applySurfaceCurrent(strong,.05,0);assert.deepEqual(strong,before);
   for(const destination of ['moon','mars']){const state={...seaState(),destination};applySurfaceCurrent(state,.05,0);assert.equal(state.x,500);assert.equal(state.y,.75);}
   const stalled=seaState('kraken');applySurfaceCurrent(stalled,100,0);assert.ok(stalled.x<501);
-  stalled.x=2700;stalled.y=.9;applySurfaceCurrent(stalled,.05,0);assert.equal(stalled.x,2700);assert.equal(stalled.y,.9);
+  stalled.x=80;stalled.y=.9;applySurfaceCurrent(stalled,.05,0);assert.equal(stalled.x,80);assert.equal(stalled.y,.9);
 });
 test('sea selection and anchoring persist; old version-two saves default to calm Ligeia',()=>{
   const state=seaState('kraken');state.anchored=true;assert.deepEqual(restoreAdventure(JSON.parse(JSON.stringify(state))),state);

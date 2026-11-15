@@ -5,6 +5,7 @@ class NativeModelViewer extends HTMLElement {
     super();this.canvas=document.createElement('canvas');this.canvas.style.cssText='width:100%;height:100%;display:block;touch-action:none';this.context=this.canvas.getContext('2d');this.theta=.6;this.phi=1.2;this.radius=3.2;this.rotating=false;this.loaded=false;this.controller=new AbortController();this.request=0;this.last=0;
   }
   connectedCallback(){
+    if(this.controller.signal.aborted)this.controller=new AbortController();
     this.append(this.canvas);this.style.display='block';this.style.position='relative';this.tabIndex=0;this.setAttribute('role','img');
     this.observer=new ResizeObserver(()=>this.draw());this.observer.observe(this);
     const signal=this.controller.signal;let drag=null;

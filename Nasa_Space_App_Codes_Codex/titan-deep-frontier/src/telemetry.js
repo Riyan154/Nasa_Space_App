@@ -1,0 +1,25 @@
+// HASI level-4 descent, dataset HP-SSA-HASI-2-3-4-MISSION-V1.1.
+// Every 60th row plus last row; columns: altitude (m), temperature (K), pressure (Pa).
+export const HASI_SAMPLES=[[146797,167.0835,275],[132163,160.0794,392],[119896,155.7482,542],[108726,146.2061,738],[89185,136.003,1321],[74498,116.8054,2160],[64108,85.3737,3358],[57017,73.212,5025],[51282,70.9039,7148],[46456,70.3782,9676],[42344,70.4079,12534],[38641,70.5563,15841],[35318,71.1304,19536],[32348,71.6867,23524],[29572,72.5525,27945],[26997,73.4431,32721],[24301,74.8172,38535],[22058,75.9906,44063],[19976,77.1846,49811],[17964,78.4215,56002],[16044,79.6655,62548],[14244,80.883,69275],[12456,82.1597,76509],[10766,83.3775,83946],[9165,84.524,91568],[7585,85.8104,99653],[6047,87.2395,108092],[4580,88.5582,116610],[3127,89.9707,125578],[1714,91.4528,134824],[353,93.0433,144218],[3,93.5027,146645]];
+const base='https://pds-atmospheres.nmsu.edu/PDS/data/hphasi_0001/DATA/PROFILES/';
+export const BENCHMARKS={
+ titan:{title:'Cassini–Huygens · HASI · 2005',xLabel:'Temperature (K)',yLabel:'Altitude (m)',xRange:[60,180],yRange:[0,150000],points:HASI_SAMPLES.map(([y,x])=>({x,y})),note:'Measured archive samples: 93.50 K and 146,645 Pa (~1.47 bar) at 3 m. Lines connect a subsample of the calibrated descent table. Pip’s gold curve is a teaching atmosphere, not flight data.',sources:[{label:'PDS HASI calibrated descent table',url:base+'HASI_L4_ATMO_PROFILE_DESCEN.TAB'},{label:'PDS column labels and SI units',url:base+'HASI_L4_ATMO_PROFILE_DESCEN.LBL'}]},
+ moon:{title:'LRO / LOLA · Shackleton Crater',xLabel:'Distance across crater (m)',yLabel:'Elevation above datum (m)',xRange:[-14000,14000],yRange:[-4000,2000],points:[[-14000,0],[-10500,1300],[-8500,0],[-3500,-2800],[0,-2800],[3500,-2800],[8500,0],[10500,1300],[14000,0]].map(([x,y])=>({x,y})),note:'Schematic cross-section constrained by published LOLA dimensions, not a sampled altimetry track: 21 km diameter, mean rim +1,300 m, mean rim-to-floor depth 4,100 ± 50 m. Floor −2,800 m is derived using the same datum. Rims receive varying illumination; the basin is permanently shadowed.',sources:[{label:'NASA NTRS · LOLA measurements, Table 1',url:'https://ntrs.nasa.gov/api/citations/20120009640/downloads/20120009640.pdf'},{label:'NASA GSFC · LOLA elevation models',url:'https://pgda.gsfc.nasa.gov/products/78'}]},
+ mars:{title:'Perseverance · Entry, Descent & Landing · 2021',xLabel:'Time after entry (s)',yLabel:'Altitude (m)',xRange:[0,420],yRange:[0,130000],points:[{x:0,y:130000},{x:240,y:11000},{x:260,y:9600},{x:360,y:2100},{x:408,y:20},{x:420,y:0}],note:'Rounded pre-landing NASA/JPL event benchmarks, not a replay of the post-flight telemetry archive. Entry ~5,400 m/s (~19,400 km/h); supersonic chute near 11 km; heat shield releases next; powered descent near 2,100 m; sky crane lowers the rover from ~20 m. Seven minutes are compressed in Pip’s game.',sources:[{label:'NASA/JPL · Mars 2020 EDL press kit',url:'https://www.jpl.nasa.gov/news/press_kits/mars_2020/landing/mission/'},{label:'NASA · Powered descent for Perseverance',url:'https://science.nasa.gov/resource/powered-descent-for-perseverance-illustration/'}]}
+};
+export function benchmarkFor(destination){return BENCHMARKS[destination]||BENCHMARKS.titan;}
+export function simulationProfile(destination){
+ if(destination==='titan')return Array.from({length:31},(_,i)=>{const y=i*5000;return {x:y<45000?94-24*y/45000:70+97*(y-45000)/105000,y};});
+ if(destination==='moon')return [{x:-14000,y:0},{x:-10500,y:1200},{x:-4000,y:-2400},{x:4000,y:-2400},{x:10500,y:1200},{x:14000,y:0}];
+ return [{x:0,y:130000},{x:180,y:25000},{x:240,y:11000},{x:300,y:5000},{x:370,y:1500},{x:420,y:0}];
+}
+export function drawBenchmark(canvas,destination,simulation=false){
+ const c=canvas.getContext('2d'),b=benchmarkFor(destination),points=simulation?simulationProfile(destination):b.points;
+ const w=800,h=540,left=100,right=35,top=40,bottom=90,pw=w-left-right,ph=h-top-bottom;
+ const x=v=>left+(v-b.xRange[0])/(b.xRange[1]-b.xRange[0])*pw,y=v=>h-bottom-(v-b.yRange[0])/(b.yRange[1]-b.yRange[0])*ph;
+ c.fillStyle='#102c35';c.fillRect(0,0,w,h);c.font='19px sans-serif';c.lineWidth=1;c.textAlign='right';
+ for(let i=0;i<=4;i++){const yy=top+ph*i/4;c.strokeStyle='#accfc52b';c.beginPath();c.moveTo(left,yy);c.lineTo(w-right,yy);c.stroke();c.fillStyle='#dae8df';c.fillText(Math.round(b.yRange[1]-(b.yRange[1]-b.yRange[0])*i/4).toLocaleString('en'),left-12,yy+7);const xx=left+pw*i/4;c.beginPath();c.moveTo(xx,top);c.lineTo(xx,h-bottom);c.stroke();c.textAlign='center';c.fillText(Math.round(b.xRange[0]+(b.xRange[1]-b.xRange[0])*i/4).toLocaleString('en'),xx,h-bottom+30);c.textAlign='right';}
+ c.strokeStyle=simulation?'#f3cd87':'#90e0d4';c.lineWidth=4;c.beginPath();points.forEach((p,i)=>i?c.lineTo(x(p.x),y(p.y)):c.moveTo(x(p.x),y(p.y)));c.stroke();
+ c.fillStyle=c.strokeStyle;for(const p of points){c.beginPath();c.arc(x(p.x),y(p.y),4,0,Math.PI*2);c.fill();}
+ c.fillStyle='#e7ead7';c.textAlign='center';c.fillText(b.xLabel,left+pw/2,h-18);c.save();c.translate(25,top+ph/2);c.rotate(-Math.PI/2);c.fillText(b.yLabel,0,0);c.restore();
+}

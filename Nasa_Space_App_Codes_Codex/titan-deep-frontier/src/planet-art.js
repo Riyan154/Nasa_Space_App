@@ -49,6 +49,8 @@ function planetCache(body){
     }
   }
   for(let i=0;i<1300;i++)oval(g,hash(i*7)*2400,350+hash(i*13)*250,.3+hash(i)*1.5,.4,i%2?'#11233320':'#f8eccb32');
+  if(mars){for(let i=0;i<9;i++){const y=300+i*7;b.beginPath();b.moveTo(800-i*7,y);b.bezierCurveTo(1020,y-22,1260,y+15,1530+i*20,y+8);b.lineWidth=4;b.strokeStyle=i%2?'#e8bb8b99':'#694f3f88';b.stroke();}for(let i=0;i<85;i++){const x=hash(i*43)*2400,y=380+hash(i*19)*200;g.beginPath();g.moveTo(x-16,y);g.quadraticCurveTo(x,y-4,x+25,y+1);g.strokeStyle='#4e342425';g.lineWidth=1;g.stroke();}}
+  else{for(let i=0;i<8;i++){const x=hash(i*19)*2400,y=410+hash(i*31)*150;for(let j=0;j<14;j++){const a=j*TAU/14;line(g,[[x+Math.cos(a)*13,y+Math.sin(a)*4],[x+Math.cos(a)*65,y+Math.sin(a)*22]],'#ece6cc20',1);}bowl(g,x,y,18,false);}for(let i=0;i<25;i++){const x=hash(i*43)*2400,y=380+hash(i*19)*200;for(let j=0;j<3;j++)line(g,[[x-7,y-j*3],[x+6,y+2-j*3]],'#d3d6bf40',.7);}}
   const value={ground,back};caches.set(body,value);return value;
 }
 export function planetaryGround(c,w,h,camera=0,unit=1,body='moon'){
@@ -118,4 +120,9 @@ export function environmentVignette(c,w,h,t,destination,reduced=false){
     const tint=c.createLinearGradient(0,0,0,h);tint.addColorStop(0,'#bf7d4a09');tint.addColorStop(1,'#7b4a3500');c.fillStyle=tint;c.fillRect(0,0,w,h);
   }
   c.restore();
+}
+// Cold-trap darkness and local illumination are artistic, not atmospheric scattering.
+export function lunarHeadlights(c,w,h,x,y,scale,direction=1){
+ c.save();c.fillStyle='#060a24b0';c.fillRect(0,0,w,h);c.translate(x,y);c.scale(scale*direction,scale);
+ for(const offset of [-16,16]){const g=c.createLinearGradient(35,offset,250,offset);g.addColorStop(0,'#fff1bd66');g.addColorStop(.6,'#fff0b41c');g.addColorStop(1,'#fff0b400');c.fillStyle=g;c.beginPath();c.moveTo(39,offset);c.lineTo(250,offset-48);c.quadraticCurveTo(278,offset,250,offset+48);c.closePath();c.fill();c.fillStyle='#fff4c8';c.beginPath();c.ellipse(40,offset,5,3,0,0,7);c.fill();}c.restore();
 }

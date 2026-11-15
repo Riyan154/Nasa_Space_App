@@ -1,5 +1,5 @@
 // Flyby and destination-specific arrival run on visible, unpaused game time.
-export const CRUISE_SECONDS = 18;
+export const CRUISE_SECONDS = 30;
 export const LANDING_SECONDS = 10;
 export const LUNAR_LANDING_SECONDS = 14;
 export const MARS_LANDING_SECONDS = 16;

@@ -1,4 +1,7 @@
 import { CATALOG, DIFFICULTIES, LAKES } from './catalog.js';
+import {LOGBOOK_KEY,normalizeLogbook,recordExpedition} from './pilot-logbook.js';
+export const loadPilotLogbook=()=>normalizeLogbook(read(LOGBOOK_KEY,null));
+export function savePilotExpedition(state,report){return write(LOGBOOK_KEY,recordExpedition(loadPilotLogbook(),state,report));}
 const SAVE_KEY = 'titan.mission.v1';
 export function read(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 export function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; } }
