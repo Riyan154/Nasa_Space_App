@@ -1,4 +1,4 @@
-# TITAN: Deep Frontier
+# Deep Frontier
 
 Build a spacecraft with Pip and explore Ligeia Mare in a hand-drawn, animated Canvas and SVG adventure. On this Mac, double-click **Open TITAN.command** in the project folder.
 
