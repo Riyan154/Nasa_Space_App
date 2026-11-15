@@ -122,3 +122,4 @@ async function load(kind, options = {}) {
 
 export const loadImages = (options = {}) => load('images', options);
 export const loadDatasets = (options = {}) => load('datasets', options);
+export {MISSION_PHOTOS,missionPhoto,downloadMissionPhoto} from './mission-reward.js';

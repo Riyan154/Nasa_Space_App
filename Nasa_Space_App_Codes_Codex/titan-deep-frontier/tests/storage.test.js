@@ -20,3 +20,9 @@ test('unavailable browser storage never throws',()=>{
   const old=globalThis.localStorage;globalThis.localStorage={getItem(){throw new Error('blocked');},setItem(){throw new Error('blocked');}};
   assert.equal(saveMission(newMission()),false);assert.equal(loadMission(),null);assert.deepEqual(read('anything',[]),[]);globalThis.localStorage=old;
 });
+test('legacy engineering saves migrate removed rockets and fuel units once',()=>{
+  const m=newMission();beginFlight(m);m.stage='flight';m.design.rocket='horizon';delete m.sizingVersion;
+  m.flight.fuel=80;m.flight.initialFuel=95;m.flight.entry={...m.flight.entry,mass:900};saveMission(m);
+  const migrated=loadMission();assert.equal(migrated.design.rocket,'titan');assert.equal(migrated.flight.fuel,8);assert.equal(migrated.flight.initialFuel,9.5);assert.equal(migrated.flight.entry.mass,90);assert.equal(migrated.sizingVersion,2);
+  saveMission(migrated);assert.deepEqual(loadMission(),migrated);
+});

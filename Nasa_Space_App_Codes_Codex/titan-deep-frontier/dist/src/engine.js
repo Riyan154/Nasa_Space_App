@@ -2,7 +2,7 @@ import { CATALOG, DIFFICULTIES, FRAME, LAKES, getPart, starterDesign } from './c
 export const TITAN = { gravity: 1.35, temperature: 94, density: 5.3, scaleHeight: 20000 };
 export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 export function newMission(difficulty = 'cadet', lake = 'ligeia') {
-  return { version: 1, id: Date.now().toString(36), difficulty, lake, design: starterDesign(), stage: 'build', buildStep: 0, flight: null, result: null };
+  return { version: 1, sizingVersion:2, id: Date.now().toString(36), difficulty, lake, design: starterDesign(), stage: 'build', buildStep: 0, flight: null, result: null };
 }
 export function selectedParts(design) {
   return [FRAME, ...Object.entries(design).flatMap(([category, value]) => category === 'rocket' ? [] : (Array.isArray(value) ? value : [value]).map(id => getPart(category, id)).filter(Boolean))];
@@ -68,7 +68,7 @@ export function simulateEntry(mission, { profile = 'gentle', deployAltitude = 18
   const r = resources(mission), shield = getPart('shield', mission.design.shield), hull = getPart('hull', mission.design.hull);
   // Educational vertical-column approximation, not an orbit/flight qualification model.
   let altitude = 180000, velocity = profile === 'steep' ? 5200 : 3600, time = 0, heat = 0, peakTemperature = 94, deployed = false, torn = false, deployTime = Infinity;
-  const mass = Math.max(100, r.mass - fuelUsed), samples = [];
+  const mass = Math.max(10, r.mass - fuelUsed), samples = [];
   const step = 0.15;
   while (altitude > 0 && time < 15000) {
     const density = TITAN.density * Math.exp(-altitude / TITAN.scaleHeight);
@@ -78,7 +78,7 @@ export function simulateEntry(mission, { profile = 'gentle', deployAltitude = 18
       // Dynamic pressure limits the fictional parachute, so early deployment can tear it.
       torn = 0.5 * density * velocity ** 2 > 800;
     }
-    const area = deployed && time - deployTime >= 3 && !torn && hull ? hull.area : 12;
+    const area = deployed && time - deployTime >= 3 && !torn && hull ? hull.area : 1.2;
     const drag = dragForce(density, velocity, 1.5, area);
     velocity = Math.max(0.1, velocity + (TITAN.gravity - drag / mass) * step);
     altitude = Math.max(0, altitude - velocity * step);
@@ -105,7 +105,7 @@ export function advanceFlight(mission, choice) {
   const nav = getPart('navigation', mission.design.navigation);
   function log(text, kind = 'Fictional flight scenario') { f.log.push({ text, kind }); }
   if (f.phase === 0) {
-    if (choice === 'correct') { f.fuel -= 18; f.accuracy = Math.min(1, f.accuracy + 0.2); log('Course corrected: 18 kg of propellant used.'); }
+    if (choice === 'correct') { f.fuel -= 1.8; f.accuracy = Math.min(1, f.accuracy + 0.2); log('Course corrected: 1.8 kg of propellant used.'); }
     else { f.accuracy -= 0.17; f.energy = energyAfter(f.energy, r.generation, r.baseline + 70, 4, r.battery); log('Survey completed. Extra data, but navigation uncertainty remains.'); f.records.push({ id: 'cruise', objective: 'cruise', data: 25, science: 5, sent: false }); }
     f.distance = 1.1e9; f.elapsedYears = 5.5;
   } else if (f.phase === 1) {
@@ -114,7 +114,7 @@ export function advanceFlight(mission, choice) {
     f.distance = 1.3e9; f.elapsedYears = 7;
   } else if (f.phase === 2) {
     f.profile = choice === 'gentle' ? 'gentle' : 'steep';
-    if (choice === 'gentle') { f.fuel -= 22; f.accuracy = Math.min(1, f.accuracy + 0.1); log('Gentle approach set: 22 kg of propellant used.'); }
+    if (choice === 'gentle') { f.fuel -= 2.2; f.accuracy = Math.min(1, f.accuracy + 0.1); log('Gentle approach set: 2.2 kg of propellant used.'); }
     else log('Direct approach selected: more atmospheric heating, propellant conserved.');
     if (f.accuracy < 0.65) { f.integrity -= 22; log('Uncorrected navigation error: a rough approach damaged the craft.'); }
   } else if (f.phase === 3) {

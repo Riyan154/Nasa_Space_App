@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 const root = resolve(process.argv.includes('--dist') ? 'dist' : '.');
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.jpg': 'image/jpeg', '.glb':'model/gltf-binary', '.wasm':'application/wasm', '.woff2':'font/woff2' };
 const server = createServer(async (req, res) => {
   try {
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end('Method not allowed'); return; }
@@ -20,7 +20,7 @@ const server = createServer(async (req, res) => {
     const path = resolve(root, '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname));
     if (path !== root && !path.startsWith(root + sep)) throw new Error('Invalid path');
     const file = path === root ? resolve(root, 'index.html') : path;
-    if (!['.html', '.js', '.css', '.svg', '.json'].includes(extname(file)) || file.includes('/.')) throw new Error('Not public');
+    if (!Object.hasOwn(types,extname(file)) || file.includes('/.')) throw new Error('Not public');
     res.writeHead(200, { 'Content-Type': types[extname(file)], 'Cache-Control': 'no-cache' });
     res.end(await readFile(file));
   } catch { res.writeHead(404); res.end('Not found'); }

@@ -4,12 +4,14 @@ import { icon, scene, lander, rocketArt } from './art.js';
 import { read, write, loadMission, saveMission, archiveMission } from './storage.js';
 import { loadImages, loadDatasets } from './nasa.js';
 import { adventureMarkup, mountAdventure } from './adventure.js';
+import {mountMissionLab} from './mission-lab.js';
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#overlay');
 let mission = loadMission();
 let screen = 'arcade';
 let disposeAdventure = null;
+let launchLoadout = null;
 let briefing = { difficulty: 'cadet', lake: 'ligeia' };
 let settings = { sound: false, reducedMotion: false, ...read('titan.settings.v1', {}) };
 let countdownTimer;
@@ -72,7 +74,7 @@ const FLIGHT = [
 function flightScreen() {
   const f = mission.flight, chapter = FLIGHT[Math.min(f.phase,4)];
   const isLaunch = screen === 'launch';
-  return `<main class="flight-scene">${scene(isLaunch ? 'launch' : f.phase===4 ? 'explore' : 'flight')}<div class="flight-shade"></div><div class="flight-craft ${isLaunch ? 'launch-craft' : 'cruise-craft'} ${countdown !== null ? (countdown === 0 ? 'liftoff' : 'launching') : ''} ${!isLaunch && f.phase===3 ? 'entry-glow' : ''} ${!isLaunch && f.phase===4 ? 'descent-craft' : ''}">${!isLaunch && f.phase===4 && !f.entry?.torn ? '<svg class="parachute-art" viewBox="0 0 400 250" aria-hidden="true"><path d="M20 95Q200-90 380 95Q335 60 290 95q-45-35-90 0-45-35-90 0-45-35-90 0Z" fill="#ddb27b" stroke="#e8d5a8" stroke-width="2"/><path d="m20 95 180 155L110 95m90 155V95m0 155L290 95m-90 155L380 95" stroke="#d7cfb4" stroke-width="2" fill="none"/></svg>' : ''}${isLaunch ? rocketArt(countdown !== null) : lander(mission.design,'flight')}</div><section class="flight-copy"><div class="section-kicker">${isLaunch ? 'TLE–01 / EARTH DEPARTURE' : chapter.label}</div><h1 tabindex="-1">${isLaunch ? 'Next stop:<br><em>another world.</em>' : chapter.name}</h1><p>${isLaunch ? 'Your explorer is on the pad. One last deep breath. You built this.' : chapter.text}</p>${isLaunch ? `<div class="launch-action">${countdown !== null ? `<div class="countdown" role="status" aria-live="polite">${countdown > 0 ? countdown : 'LIFT OFF'}</div>${button('cancel-launch','Hold countdown','secondary')}` : button('ignite',`Begin countdown ${icon('rocket',21)}`)}</div>` : `<div class="flight-options">${chapter.choices.map(choice => `<button data-action="flight-choice" data-id="${choice.id}" class="flight-option"><span><strong>${choice.name}</strong><small>${choice.text}</small></span>${arrow}</button>`).join('')}</div>`}${!isLaunch && f.phase===4 ? `<div class="descent-note ${f.entry.safe ? '' : 'warning'}">${icon(f.entry.safe ? 'check' : 'shield',18)} ${f.entry.torn ? 'Parachute damaged. Splashdown is at risk.' : f.entry.heatRatio>1 ? 'Heat protection overwhelmed. Hull integrity is at risk.' : f.entry.velocity>4.5 ? 'Descent is too fast. The parachute needed more time.' : `Parachute open · ${f.entry.velocity.toFixed(1)} m/s descent`}</div>` : ''}<p class="sim-label">SIMULATED MISSION · ${isLaunch ? 'All systems ready' : 'Your choices change the outcome'}</p></section><div class="flight-status"><span><i class="status-dot"></i> ${isLaunch ? 'READY TO FLY' : f.phase < 3 ? 'EXPLORER ONLINE' : 'LANDING SEQUENCE'}</span><div><strong>${Math.round(f.energy)}<small> Wh</small></strong><label>BATTERY</label></div><div><strong>${f.fuel}<small> kg</small></strong><label>PROPELLANT</label></div><div><strong>${Math.round(f.integrity)}<small>%</small></strong><label>INTEGRITY</label></div>${button('telemetry', 'Mission telemetry ↗', 'text-button')}</div><div class="flight-progress">${['Launch','Travel','Saturn','Titan','Descent','Splashdown'].map((label,i)=>`<span class="${i <= (isLaunch?0:f.phase+1) ? 'complete' : ''}"><i></i>${label}</span>`).join('')}</div></main>`;
+  return `<main class="flight-scene">${scene(isLaunch ? 'launch' : f.phase===4 ? 'explore' : 'flight')}<div class="flight-shade"></div><div class="flight-craft ${isLaunch ? 'launch-craft' : 'cruise-craft'} ${countdown !== null ? (countdown === 0 ? 'liftoff' : 'launching') : ''} ${!isLaunch && f.phase===3 ? 'entry-glow' : ''} ${!isLaunch && f.phase===4 ? 'descent-craft' : ''}">${!isLaunch && f.phase===4 && !f.entry?.torn ? '<svg class="parachute-art" viewBox="0 0 400 250" aria-hidden="true"><path d="M20 95Q200-90 380 95Q335 60 290 95q-45-35-90 0-45-35-90 0-45-35-90 0Z" fill="#ddb27b" stroke="#e8d5a8" stroke-width="2"/><path d="m20 95 180 155L110 95m90 155V95m0 155L290 95m-90 155L380 95" stroke="#d7cfb4" stroke-width="2" fill="none"/></svg>' : ''}${isLaunch ? rocketArt(countdown !== null) : f.phase===4 ? lander(mission.design,'flight') : '<svg viewBox="0 0 420 260" aria-label="Cruise aeroshell"><path fill="#dfc99c" d="m80 167 76-85h100l84 85z"/><ellipse cx="210" cy="166" rx="130" ry="22" fill="#ae6d55"/><path fill="#ac895c" d="M148 65h125v24H148z"/>'+(f.phase<3?'<path fill="#537591" d="M22 55h96v38H22zm280 0h96v38h-96z"/><path stroke="#d8ba82" stroke-width="8" d="M116 74h33m123 0h32"/>':'')+'</svg>'}</div><section class="flight-copy"><div class="section-kicker">${isLaunch ? 'TLE–01 / EARTH DEPARTURE' : chapter.label}</div><h1 tabindex="-1">${isLaunch ? 'Next stop:<br><em>another world.</em>' : chapter.name}</h1><p>${isLaunch ? 'Your explorer is on the pad. One last deep breath. You built this.' : chapter.text}</p>${isLaunch ? `<div class="launch-action">${countdown !== null ? `<div class="countdown" role="status" aria-live="polite">${countdown > 0 ? countdown : 'LIFT OFF'}</div>${button('cancel-launch','Hold countdown','secondary')}` : button('ignite',`Begin countdown ${icon('rocket',21)}`)}</div>` : `<div class="flight-options">${chapter.choices.map(choice => `<button data-action="flight-choice" data-id="${choice.id}" class="flight-option"><span><strong>${choice.name}</strong><small>${choice.text}</small></span>${arrow}</button>`).join('')}</div>`}${!isLaunch && f.phase===4 ? `<div class="descent-note ${f.entry.safe ? '' : 'warning'}">${icon(f.entry.safe ? 'check' : 'shield',18)} ${f.entry.torn ? 'Parachute damaged. Splashdown is at risk.' : f.entry.heatRatio>1 ? 'Heat protection overwhelmed. Hull integrity is at risk.' : f.entry.velocity>4.5 ? 'Descent is too fast. The parachute needed more time.' : `Parachute open · ${f.entry.velocity.toFixed(1)} m/s descent`}</div>` : ''}<p class="sim-label">SIMULATED MISSION · ${isLaunch ? 'All systems ready' : 'Your choices change the outcome'}</p></section><div class="flight-status"><span><i class="status-dot"></i> ${isLaunch ? 'READY TO FLY' : f.phase < 3 ? 'EXPLORER ONLINE' : 'LANDING SEQUENCE'}</span><div><strong>${Math.round(f.energy)}<small> Wh</small></strong><label>BATTERY</label></div><div><strong>${f.fuel}<small> kg</small></strong><label>PROPELLANT</label></div><div><strong>${Math.round(f.integrity)}<small>%</small></strong><label>INTEGRITY</label></div>${button('telemetry', 'Mission telemetry ↗', 'text-button')}</div><div class="flight-progress">${['Launch','Travel','Saturn','Titan','Descent','Splashdown'].map((label,i)=>`<span class="${i <= (isLaunch?0:f.phase+1) ? 'complete' : ''}"><i></i>${label}</span>`).join('')}</div></main>`;
 }
 function exploreScreen() {
   const f = mission.flight, r = resources(mission), instruments = mission.design.instruments.map(id=>getPart('instruments',id));
@@ -85,9 +87,19 @@ function resultsScreen() {
 function render() {
   disposeAdventure?.(); disposeAdventure = null;
   document.documentElement.classList.toggle('reduce-motion',settings.reducedMotion);
+  if(screen === 'lab') {
+    disposeAdventure=mountMissionLab(app,{
+      onHome:()=>go('home'),
+      onEngineering:()=>go('briefing'),
+      onLaunch:loadout=>{launchLoadout=loadout;go('home');},
+      reducedMotion:settings.reducedMotion
+    });
+    return;
+  }
   if(screen === 'arcade') {
     app.innerHTML = adventureMarkup();
-    disposeAdventure = mountAdventure(app, {science:showScience, workshop:()=>go('briefing'), reducedMotion:settings.reducedMotion});
+    disposeAdventure = mountAdventure(app, {science:showScience, workshop:()=>go('lab'), launchLoadout, reducedMotion:settings.reducedMotion});
+    launchLoadout=null;
     return;
   }
   const views = { home, briefing:briefingScreen, build:buildScreen, check:checkScreen, launch:flightScreen, flight:flightScreen, explore:exploreScreen, results:resultsScreen };

@@ -1,41 +1,80 @@
-// Illustrative game engineering values, not specifications or prices of NASA hardware.
-export const BUILDER_LIMITS = { mass: 240, budget: 300 };
-export const DEFAULT_LOADOUT = { body: 'light', power: 'rtg', science: 'camera', radio: 'dish' };
-export const COMPONENTS = {
-  body: [
-    { id:'light', name:'Light explorer', tag:'LIGHT & NIMBLE', mass:25, cost:35, draw:0, detail:'A small aluminium body with slim floating feet. More room in your mass budget.' },
-    { id:'shield', name:'Insulated explorer', tag:'WRAPPED UP WARM', mass:50, cost:60, draw:0, detail:'A gold thermal blanket and wider floats. Insulation helps slow heat loss.' },
-    { id:'heavy', name:'Cargo explorer', tag:'BIG SCIENCE BUDDY', mass:80, cost:80, draw:0, detail:'A reinforced body and two chunky pontoons carry your equipment.' },
-  ],
-  power: [
-    { id:'solar', name:'Solar wings', tag:'SUNLIGHT → ELECTRICITY', mass:28, cost:45, draw:0, supply:8, detail:'Blue cells turn sunlight into electricity. Titan is far from the Sun and very hazy: these small wings cannot run this mission.' },
-    { id:'rtg', name:'Radioisotope generator', tag:'HEAT → ELECTRICITY', mass:45, cost:110, draw:0, supply:110, detail:'A sealed generator turns heat from radioactive decay into electricity. Its fins release extra heat. It works without sunlight.' },
-    { id:'battery', name:'Battery pack', tag:'STORED ENERGY', mass:32, cost:55, draw:0, supply:80, energy:600, detail:'Stores electricity for a short trip. It runs out unless recharged. This pretend pack holds 600 Wh.' },
-  ],
-  science: [
-    { id:'camera', name:'Panorama camera', tag:'LOOK CLOSELY', mass:12, cost:30, draw:8, detail:'A blue lens and rotating camera mast photograph the alien shore.' },
-    { id:'sampler', name:'Sample scoop', tag:'REACH & DISCOVER', mass:28, cost:55, draw:18, detail:'An articulated arm dips a copper scoop into the methane sea.' },
-    { id:'lab', name:'Mini science lab', tag:'A LITTLE OF EVERYTHING', mass:48, cost:85, draw:35, detail:'Twin sample canisters and extra sensors make a tiny floating laboratory.' },
-  ],
-  radio: [
-    { id:'whip', name:'Little antenna', tag:'SMALL & SIMPLE', mass:7, cost:20, draw:5, detail:'A slender antenna saves mass. In real missions, antenna design affects how much data can be sent.' },
-    { id:'dish', name:'Space dish', tag:'POINT TOWARD HOME', mass:15, cost:35, draw:12, detail:'A curved dish focuses radio signals. Watch it gently track across the sky.' },
-    { id:'array', name:'Twin antenna', tag:'DOUBLE THE DETAIL', mass:26, cost:65, draw:22, detail:'Two antenna panels with a small tracking dish make a detailed communications module.' },
-  ],
+// Fictional mission-credit and hardware ratings. Every installed item is explicit.
+export const BUILDER_LIMITS={budget:300};
+export const CORE_CHASSIS={id:'core',group:'core',name:'Pip Core Chassis',mass:0,cost:0,draw:10};
+export const DEFAULT_LOADOUT={rocket:'atlas',power:'rtg',science:'camera',radio:'dish'};
+export const emptyLoadout=()=>({rocket:null,power:null,science:null,radio:null});
+export const COMPONENTS={
+ rocket:[
+ {id:'scout',name:'Sky Hopper',mass:0,draw:0,cost:50,capacity:170,tag:'LIGHT & BOUNCY',detail:'A nimble starter booster. Save mission coins for science gear and pack carefully.'},
+ {id:'atlas',name:'Starlight Lifter',mass:0,draw:0,cost:80,capacity:240,tag:'THE RELIABLE CLASSIC',detail:'Twin boosters and dependable thrust. The balanced standard for interplanetary missions.'},
+ {id:'titan',name:'Cosmic Titan',mass:0,draw:0,cost:115,capacity:310,tag:'SUPER HAULER',detail:'A triple-core rocket for advanced labs, ground radar and hybrid power systems.'}],
+ power:[
+ {id:'solar',name:'Solar Wings',mass:25,draw:0,cost:35,supply:45,tag:'SUNLIGHT → ELECTRICITY',detail:'Deployable solar arrays. Output depends on destination and illumination.'},
+ {id:'rtg',name:'Radioisotope Core (RTG)',mass:45,draw:0,cost:80,supply:110,tag:'HEAT → ELECTRICITY',detail:'Decay heat becomes electricity even in darkness. Includes a buffer battery.'},
+ {id:'battery',name:'Battery Storage Module',mass:30,draw:0,cost:45,supply:80,energy:600,tag:'STORED ENERGY',detail:'Chemical energy storage for a short expedition. 600 game Wh.'},
+ {id:'hybrid',name:'Hybrid RTG-Battery Core',mass:60,draw:0,cost:105,supply:140,energy:900,tag:'CONTINUOUS & BURST',detail:'Continuous generation and a large buffer battery for demanding science.'}],
+ science:[
+ {id:'camera',name:'Panorama Camera Mast',mass:12,draw:8,cost:25,data:90,tag:'SURFACE IMAGING',detail:'Records landscapes, terrain textures and Earth panoramas.'},
+ {id:'sampler',name:'Articulated Sample Scoop',mass:28,draw:18,cost:45,data:65,tag:'SAMPLES & CORES',detail:'An interchangeable scoop and coring head collects lake samples, regolith and sediment cores.'},
+ {id:'lab',name:'Mini Science Laboratory',mass:48,draw:35,cost:65,data:110,tag:'CAMERA + SAMPLE LAB',detail:'Includes a sample analysis bench and inspection camera. Replaces the separate camera and scoop for their tasks.'},
+ {id:'weather',name:'Atmosphere & Weather Station',mass:20,draw:12,cost:35,data:30,tag:'AIR & TEMPERATURE',detail:'Measures temperature and atmospheric conditions. Needed for weather research.'},
+ {id:'seismic',name:'Ground Seismometer',mass:22,draw:8,cost:40,data:90,tag:'LISTEN BELOW',detail:'Measures ground motion on solid terrain. Cannot make ground-coupled measurements from a Titan boat.'},
+ {id:'ground_radar',name:'Subsurface Ground Radar',mass:32,draw:20,cost:40,data:50,tag:'LOOK BELOW',detail:'A deployable solid-ground sounder for subsurface structure on the Moon and Mars. Adds survey science; does not collect physical samples.'},
+ {id:'magnetometer',name:'Magnetometer & Plasma Boom',mass:18,draw:10,cost:28,data:35,tag:'FEEL THE FIELD',detail:'An extended sensor boom measures magnetic and plasma conditions. Particularly useful near Titan and for lunar crustal fields.'}],
+ radio:[
+ {id:'whip',name:'Omni Whip Antenna',mass:8,draw:5,cost:20,rate:35,tag:'SMALL & SIMPLE',detail:'An efficient antenna with a slower data link.'},
+ {id:'dish',name:'Parabolic Space Dish',mass:16,draw:12,cost:35,rate:90,tag:'POINT TOWARD HOME',detail:'A focused dish sends discoveries home faster.'},
+ {id:'array',name:'Phased Array Panel',mass:28,draw:22,cost:55,rate:180,tag:'ELECTRONIC STEERING',detail:'A fast electronic link with greater mass, cost and power use.'}]
 };
-export function validLoadout(value) {
-  return !!value && typeof value==='object' && Object.entries(COMPONENTS).every(([group,items])=>items.some(item=>item.id===value[group]));
+export function scienceTools(loadout){return Array.isArray(loadout?.scienceTools)?loadout.scienceTools:loadout?.science?[loadout.science]:[];}
+export function hasScience(loadout,...ids){return scienceTools(loadout).some(id=>ids.includes(id));}
+export function toggleScience(loadout,id){
+ const ids=[...scienceTools(loadout)],index=ids.indexOf(id);
+ if(index>=0)ids.splice(index,1);else if(COMPONENTS.science.some(p=>p.id===id))ids.push(id);
+ return {...loadout,science:ids.includes(loadout.science)?loadout.science:(ids[0]??null),scienceTools:ids};
 }
-export function missionTotals(loadout) {
-  const safe=validLoadout(loadout)?loadout:DEFAULT_LOADOUT;
-  const items=Object.entries(COMPONENTS).map(([group,options])=>({group,...options.find(item=>item.id===safe[group])}));
-  const mass=65+items.reduce((sum,item)=>sum+item.mass,0);
-  const cost=50+items.reduce((sum,item)=>sum+item.cost,0);
-  const demand=15+items.reduce((sum,item)=>sum+item.draw,0);
-  const power=items.find(item=>item.group==='power');
-  const issues=[];
-  if(mass>BUILDER_LIMITS.mass)issues.push('Too heavy! Try a lighter body or science kit.');
-  if(cost>BUILDER_LIMITS.budget)issues.push('Over budget! Swap a part to save mission coins.');
-  if(power.supply<demand)issues.push('Too little sunlight on Titan. Try the generator or battery pack.');
-  return {items,mass,cost,demand,supply:power.supply,margin:power.supply-demand,hours:power.energy?power.energy/demand:null,issues,ready:issues.length===0};
+export function surveyLoadout(destination='titan'){
+ const ids=['camera','sampler',...(destination!=='moon'?['weather']:[]),...(destination!=='titan'?['seismic']:[])];
+ return {rocket:'scout',power:destination==='titan'?'rtg':'solar',radio:'whip',science:ids[0],scienceTools:ids};
+}
+export function cloneLoadout(value){return {...value,...(Array.isArray(value?.scienceTools)?{scienceTools:[...value.scienceTools]}:{})};}
+export function migrateLoadout(value){
+ if(!value||typeof value!=='object'||Array.isArray(value))return value;
+ const next=cloneLoadout(value);
+ if(['horizon','deep'].includes(next.rocket))next.rocket='titan';
+ if(!next.rocket&&['light','shield','heavy'].includes(next.body)){next.rocket='atlas';delete next.body;}
+ return next;
+}
+export function validDraftLoadout(value){
+ if(!value||typeof value!=='object'||Array.isArray(value))return false;
+ if(!['rocket','power','radio'].every(group=>value[group]===null||COMPONENTS[group].some(p=>p.id===value[group])))return false;
+ const ids=scienceTools(value);
+ if(value.scienceTools!==undefined&&!Array.isArray(value.scienceTools))return false;
+ if(new Set(ids).size!==ids.length||ids.some(id=>!COMPONENTS.science.some(p=>p.id===id)))return false;
+ return ids.length?ids.includes(value.science):value.science===null;
+}
+export function validLoadout(value){return validDraftLoadout(value)&&['rocket','power','science','radio'].every(group=>!!value[group]);}
+export function scienceWarning(id,destination){
+ if(id==='ground_radar'&&destination==='titan')return '⚠ Ground sounder is designed for solid terrain; recommended for Moon and Mars. Cassini radar could penetrate some methane-rich seas.';
+ if(id==='magnetometer'&&destination==='mars')return '⚠ Mars has no global dynamo field. This boom cannot collect sediment cores; bring a sampler for rock research.';
+ if(id==='seismic'&&destination==='titan')return '⚠ A floating skiff cannot couple a seismometer to solid ground.';
+ return '';
+}
+export function instrumentScience(id,destination){
+ if(id==='seismic')return destination==='titan'?0:45;
+ if(id==='ground_radar')return destination==='titan'?0:30;
+ if(id==='magnetometer')return destination==='mars'?3:25;
+ return 20;
+}
+export function missionTotals(loadout,destination='titan',shadow=false){
+ const safe=validDraftLoadout(loadout)?loadout:emptyLoadout(),ids=scienceTools(safe);
+ const items=[{...CORE_CHASSIS},...Object.entries(COMPONENTS).flatMap(([group,options])=>options.filter(item=>group==='science'?ids.includes(item.id):safe[group]===item.id).map(item=>({group,...item,...(item.id==='solar'?{supply:shadow?0:destination==='moon'?180:destination==='mars'?95:45}:{})})))];
+ const missing=['rocket','power','science','radio'].filter(group=>group==='science'?!ids.length:!safe[group]);
+ const mass=items.reduce((sum,item)=>sum+item.mass,0),cost=items.reduce((sum,item)=>sum+item.cost,0),demand=items.reduce((sum,item)=>sum+item.draw,0);
+ const power=items.find(p=>p.group==='power'),capacity=items.find(p=>p.group==='rocket')?.capacity??0,supply=power?.supply??0,issues=[];
+ if(missing.length)issues.push('Choose '+missing.join(', ')+' to finish your spacecraft.');
+ if(capacity&&mass>capacity)issues.push('Too heavy! Choose a larger rocket or lighter equipment.');
+ if(cost>BUILDER_LIMITS.budget)issues.push('Over budget! Swap a part to save mission credits.');
+ if(power&&supply<demand)issues.push('Not enough power. Choose a stronger source or fewer tools.');
+ return {items,missing,capacity,mass,cost,demand,supply,margin:supply-demand,hours:power?.id==='battery'?power.energy/demand:null,issues,ready:issues.length===0,science:ids.reduce((n,id)=>n+instrumentScience(id,destination),0),warnings:ids.map(id=>scienceWarning(id,destination)).filter(Boolean)};
 }
