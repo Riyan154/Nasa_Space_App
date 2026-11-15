@@ -1,7 +1,8 @@
-import {COMPONENTS, DEFAULT_LOADOUT, missionTotals} from './builder-model.js';
+import {COMPONENTS, DEFAULT_LOADOUT, missionTotals, BUILDER_LIMITS, scienceTools, toggleScience, cloneLoadout, scienceWarning} from './builder-model.js';
 import {componentArt, explorer} from './adventure-art.js';
 import {read,write} from './storage.js';
 import {GOALS,LAB_KEY,restoreLab,signature,assess,powerTrial,radioTrial,reviewed} from './lab-model.js';
+import './native-model-viewer.js';
 
 const asset=name=>new URL(name,import.meta.url).href;
 const steps=['Idea','Feasibility','Compare','Mission review'];
@@ -33,7 +34,7 @@ export function mountMissionLab(root,{onHome,onLaunch,onEngineering,reducedMotio
         <output class="lab-status" aria-live="polite">Loading NASA spacecraft…</output>
         <div class="lab-viewer-tools">${button('zoom-in','+ Zoom','aria-label="Zoom in"')}${button('zoom-out','− Zoom','aria-label="Zoom out"')}${button('reset','Reset view')}${button('rotate',gentle?'Rotate':'Pause rotation',`aria-pressed="${!gentle}"`)}</div>
       </section><div class="lab-reference-caption"><p id="lab-model-name">NASA spacecraft reference</p><small>NASA/Brian E. Kumanchik · <a href="${source}" target="_blank" rel="noopener">Model source ↗</a></small></div>
-      <div class="lab-topics" aria-label="Spacecraft field notes">${button('topic-mission','Mission architecture')}${button('topic-dish','High-gain dish')}${button('topic-shield','Entry probe')}</div><div class="lab-topic-info"></div>
+      <p class="lab-note">NASA geometry study · simplified materials · native Canvas rendering</p><div class="lab-topics" aria-label="Spacecraft field notes">${button('topic-mission','Mission architecture')}${button('topic-dish','High-gain dish')}${button('topic-shield','Entry probe')}</div><div class="lab-topic-info"></div>
       <section class="lab-panel lab-work" aria-label="Mission design activity"></section>
       <div class="lab-next"></div></div><aside class="lab-panel lab-aside" aria-label="Live mission resources"></aside></div>
   </main>`;
@@ -45,16 +46,16 @@ export function mountMissionLab(root,{onHome,onLaunch,onEngineering,reducedMotio
   function gauges(){
     const t=assess(state);
     function gauge(label,value,max,unit,warning){return `<div class="lab-gauge ${warning?'bad':''}"><label>${label}</label><strong>${value}<small> / ${max} ${unit}</small></strong><meter min="0" max="${max}" value="${value}" aria-label="${label}"></meter></div>`;}
-    q('.lab-aside').innerHTML=`<span class="lab-eyebrow">Pip’s mission resources</span>${gauge('Payload mass',t.mass,t.capacity,'kg',t.mass>t.capacity)}${gauge('Budget',t.cost,350,'MC',t.cost>350)}${gauge('Power use',t.demand,t.supply,'W',t.margin<0)}
+    q('.lab-aside').innerHTML=`<span class="lab-eyebrow">Pip’s mission resources</span>${gauge('Payload mass',t.mass,t.capacity,'kg',t.mass>t.capacity)}${gauge('Budget',t.cost,BUILDER_LIMITS.budget,'MC',t.cost>BUILDER_LIMITS.budget)}${gauge('Power use',t.demand,t.supply,'W',t.margin<0)}
       <div class="lab-check ${t.ready?'':'warn'}" role="status">${t.ready?'✓ Equipment fits the science goal.':t.errors[0]}</div><p class="lab-note">Equipment ratings and tests use game values. The NASA models show real spacecraft for comparison.</p>`;
   }
   function parts(){
-    q('.lab-left').innerHTML=`<span class="lab-eyebrow">Your expedition</span><h2>${GOALS[state.goal].name}</h2><p>${GOALS[state.goal].hint}</p><div class="lab-tabs">${Object.entries(groups).map(([id,name])=>button('category-'+id,name,`aria-pressed="${category===id}"`)).join('')}</div><div class="lab-parts">${COMPONENTS[category].map(p=>button('part-'+p.id,`<canvas width="130" height="108" data-part-art="${p.id}" aria-hidden="true"></canvas><span><strong>${p.name}</strong><small>${p.capacity?p.capacity+' kg lift':p.mass+' kg'} · ${p.cost} MC<br>${p.supply?p.supply+' W available':p.rate?p.rate+' units/h · '+p.draw+' W':p.draw+' W use'}</small></span>`,`class="lab-part" aria-pressed="${state.loadout[category]===p.id}"`)).join('')}</div><p class="lab-explanation">${selectedPart(state,category).detail}</p>`;
+    q('.lab-left').innerHTML=`<span class="lab-eyebrow">Your expedition</span><h2>${GOALS[state.goal].name}</h2><p>${GOALS[state.goal].hint}</p><div class="lab-tabs">${Object.entries(groups).map(([id,name])=>button('category-'+id,name,`aria-pressed="${category===id}"`)).join('')}</div><div class="lab-parts">${COMPONENTS[category].map(p=>button('part-'+p.id,`<canvas width="130" height="108" data-part-art="${p.id}" aria-hidden="true"></canvas><span><strong>${p.name}</strong><small>${p.capacity?p.capacity+' kg lift':p.mass+' kg'} · ${p.cost} MC<br>${p.supply?p.supply+' W available':p.rate?p.rate+' units/h · '+p.draw+' W':p.draw+' W use'}</small></span>`,`class="lab-part" aria-pressed="${category==='science'?scienceTools(state.loadout).includes(p.id):state.loadout[category]===p.id}"`)).join('')}</div><p class="lab-explanation">${selectedPart(state,category)?.detail||'Choose science instruments.'} ${category==='science'?scienceTools(state.loadout).map(id=>scienceWarning(id,'titan')).filter(Boolean).join(' '):''}</p>`;
     root.querySelectorAll('[data-part-art]').forEach(c=>componentArt(c.getContext('2d'),c.dataset.partArt,65,54,.7));
   }
   function comparison(){
     const current=assess(state), snapshot=state.saved, before=snapshot?missionTotals(snapshot.loadout):null;
-    const rows=[['Science goal',snapshot?GOALS[snapshot.goal].name:'—',GOALS[state.goal].name],...Object.keys(groups).map(group=>[groups[group],snapshot?COMPONENTS[group].find(p=>p.id===snapshot.loadout[group]).name:'—',selectedPart(state,group).name]),['Mass',before?before.mass+' kg':'—',current.mass+' kg'],['Cost',before?before.cost+' MC':'—',current.cost+' MC'],['Power reserve',before?before.margin+' W':'—',current.margin+' W']];
+    const rows=[['Science goal',snapshot?GOALS[snapshot.goal].name:'—',GOALS[state.goal].name],...Object.keys(groups).map(group=>[groups[group],snapshot?COMPONENTS[group].find(p=>p.id===snapshot.loadout[group])?.name||'None':'—',selectedPart(state,group)?.name||'None']),['Mass',before?before.mass+' kg':'—',current.mass+' kg'],['Cost',before?before.cost+' MC':'—',current.cost+' MC'],['Power reserve',before?before.margin+' W':'—',current.margin+' W']];
     return `<span class="lab-eyebrow">Explore the trade space</span><h2>What does a change buy you?</h2><p>Save a design, swap a part, and compare the cost, mass and power reserve.</p>${button('snapshot',snapshot?'Replace saved design':'Save current design')}${snapshot?' '+button('restore','Use saved design'):''}<table class="lab-comparison"><thead><tr><th>Measure</th><th>Saved</th><th>Current</th></tr></thead><tbody>${rows.map(row=>`<tr>${row.map((cell,i)=>i?`<td>${cell}</td>`:`<th scope="row">${cell}</th>`).join('')}</tr>`).join('')}</tbody></table>`;
   }
   function testCard(kind,title,graphic){
@@ -63,7 +64,7 @@ export function mountMissionLab(root,{onHome,onLaunch,onEngineering,reducedMotio
   }
   function review(){
     const t=assess(state), checks=[['Equipment fits within mass, budget and power limits',t.ready],['Selected instrument addresses the science goal',t.science],['Power test complete',state.tests.power===signature(state)],['Radio test complete',state.tests.radio===signature(state)]];
-    return `<span class="lab-eyebrow">Your mission point design</span><h2>Ready for the frontier?</h2><div class="lab-pip-card"><canvas id="lab-pip" width="340" height="260" aria-label="Pip with your selected equipment"></canvas><p>${GOALS[state.goal].question}<br><strong>${selectedPart(state,'science').name}</strong></p></div><ul class="lab-checklist">${checks.map(([text,pass])=>`<li>${pass?'✓':'○'} ${text}</li>`).join('')}</ul><p class="lab-pledge">Launch sends this equipment into Pip’s Titan adventure. The tests model power and downlink decisions in a compressed teaching scenario.</p>${button('launch','Launch this expedition →',`class="lab-primary" ${reviewed(state)?'':'disabled'}`)}`;
+    return `<span class="lab-eyebrow">Your mission point design</span><h2>Ready for the frontier?</h2><div class="lab-pip-card"><canvas id="lab-pip" width="340" height="260" aria-label="Pip with your selected equipment"></canvas><p>${GOALS[state.goal].question}<br><strong>${selectedPart(state,'science')?.name||'Choose tools'}</strong></p></div><ul class="lab-checklist">${checks.map(([text,pass])=>`<li>${pass?'✓':'○'} ${text}</li>`).join('')}</ul><p class="lab-pledge">Launch sends this equipment into Pip’s Titan adventure. The tests model power and downlink decisions in a compressed teaching scenario.</p>${button('launch','Launch this expedition →',`class="lab-primary" ${reviewed(state)?'':'disabled'}`)}`;
   }
   function render(){
     q('.lab-steps').innerHTML=steps.map((name,i)=>button('step-'+i,`${i+1}. ${name}`,`aria-current="${state.step===i?'step':'false'}"`)).join('');
@@ -111,7 +112,7 @@ export function mountMissionLab(root,{onHome,onLaunch,onEngineering,reducedMotio
     const control=event.target.closest('[data-lab]');if(!control || control.disabled)return;const action=control.dataset.lab;
     if(action==='home'){save();onHome();return;}
     if(action==='engineering'){save();onEngineering();return;}
-    if(action==='launch'){if(reviewed(state)){save();onLaunch({...state.loadout});}return;}
+    if(action==='launch'){if(reviewed(state)){save();onLaunch(cloneLoadout(state.loadout));}return;}
     if(action==='next'||action==='back'||action.startsWith('step-')){
       stopTest();if(action==='back'&&state.step===0){onHome();return;}
       state.step=action==='next'?Math.min(3,state.step+1):action==='back'?state.step-1:Number(action.slice(5));render();save();return;
@@ -119,10 +120,10 @@ export function mountMissionLab(root,{onHome,onLaunch,onEngineering,reducedMotio
     if(action.startsWith('goal-')){state.goal=action.slice(5);invalidate();render();return;}
     if(action.startsWith('category-')){category=action.slice(9);parts();return;}
     if(action.startsWith('part-')){
-      if(COMPONENTS[category].some(p=>p.id===action.slice(5))){state.loadout[category]=action.slice(5);invalidate();render();}return;
+      if(COMPONENTS[category].some(p=>p.id===action.slice(5))){state.loadout=category==='science'?toggleScience(state.loadout,action.slice(5)):{...state.loadout,[category]:action.slice(5)};invalidate();render();}return;
     }
-    if(action==='snapshot'){state.saved={goal:state.goal,loadout:{...state.loadout}};render();save();return;}
-    if(action==='restore'&&state.saved){state.goal=state.saved.goal;state.loadout={...state.saved.loadout};invalidate();render();return;}
+    if(action==='snapshot'){state.saved={goal:state.goal,loadout:cloneLoadout(state.loadout)};render();save();return;}
+    if(action==='restore'&&state.saved){state.goal=state.saved.goal;state.loadout=cloneLoadout(state.saved.loadout);invalidate();render();return;}
     if(action.startsWith('test-')){runTest(action.slice(5));return;}
     if(action==='cassini'||action==='huygens'){state.model=action;loadModel();topic('mission');save();return;}
     if(action.startsWith('topic-')){if(action==='topic-shield'&&state.model!=='huygens'){state.model='huygens';loadModel();}topic(action.slice(6));return;}
@@ -133,8 +134,5 @@ export function mountMissionLab(root,{onHome,onLaunch,onEngineering,reducedMotio
   viewer.addEventListener('load',()=>{if(disposed)return;q('.lab-status').textContent='';viewer.autoRotate=rotating;topic(state.topic);},{signal});
   viewer.addEventListener('error',()=>{if(!disposed)q('.lab-status').textContent='The model could not load. Retry the model button. Equipment and mission tests remain available.';},{signal});
   render();loadModel();
-  // Configure the decoder before the viewer upgrades the custom element.
-  if(!customElements.get('model-viewer'))window.ModelViewerElement={dracoDecoderLocation:asset('./vendor/draco/')};
-  import('./vendor/model-viewer.min.js').catch(()=>{if(!disposed)q('.lab-status').textContent='3D viewer unavailable. You can still build and test Pip’s expedition.';});
   return ()=>{disposed=true;stopTest();abort.abort();viewer.remove();};
 }

@@ -5,6 +5,10 @@ export function write(key, value) { try { localStorage.setItem(key, JSON.stringi
 export function saveMission(mission) { return write(SAVE_KEY, mission); }
 export function loadMission() {
   const m = read(SAVE_KEY, null);
+  if(m?.version===1&&m.design){
+    if(['horizon','deep'].includes(m.design.rocket))m.design.rocket='titan';
+    if(m.sizingVersion!==2){if(m.flight){for(const key of ['fuel','initialFuel'])if(Number.isFinite(m.flight[key]))m.flight[key]/=10;if(Number.isFinite(m.flight.entry?.mass))m.flight.entry.mass/=10;}m.sizingVersion=2;}
+  }
   if (!m || m.version !== 1 || !DIFFICULTIES[m.difficulty] || !LAKES[m.lake] || !m.design || !['build', 'check', 'launch', 'flight', 'explore', 'results'].includes(m.stage)) return null;
   for (const [category, options] of Object.entries(CATALOG)) {
     const values = category === 'instruments' ? m.design[category] : [m.design[category]];

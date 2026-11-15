@@ -21,14 +21,22 @@ npm start
 
 ## Play
 
-Open **Advanced spacecraft workshop** on the title screen to enter the Mission Lab. Choose a science goal, inspect the two locally bundled NASA Cassini–Huygens reference models, configure Pip's equipment, run the power and downlink tests, save a comparison design, and launch the reviewed expedition. The four design stages are Idea, Feasibility, Compare, and Mission review. Changing a goal or part clears the completed test results. The **Engineering console** button opens the original detailed mission simulator.
+Hands-on science now includes a lunar laser alignment, Titan methane/ethane
+fingerprint matching, and a Mars delta core-drilling challenge. Choose Ligeia or
+drifting Kraken on Titan; deploy stabilizers to hold position. Each world's
+lighting is distinct. The Fly chapter includes an SVG Hohmann transfer map.
+See [science interactions and assumptions](docs/SCIENCE_INTERACTIONS.md).
 
-Model credits and educational assumptions are documented in `src/models/CREDITS.md`. The local 3D viewer and its license are bundled under `src/vendor/`.
+Open **Advanced spacecraft workshop** from Pause and settings to enter the separate Mission Lab. Choose a science goal, inspect the two locally bundled NASA Cassini–Huygens reference models, configure Pip's equipment, run the power and downlink tests, save a comparison design, and launch the reviewed expedition. The four design stages are Idea, Feasibility, Compare, and Mission review. Changing a goal or part clears the completed test results. The **Engineering console** button opens the original detailed mission simulator.
 
-1. Pick a rocket, a power source, a science tool and a radio. Fit the payload to the rocket and stay within 350 mission coins.
-2. Hold the launch button or Space. A six-second flyby takes Pip past Saturn. Choose **Skip to Landing** to jump ahead.
+Model credits and educational assumptions are documented in `src/models/CREDITS.md`. The inspection lab uses an original native Canvas renderer with exported NASA mesh geometry; no runtime 3D library is needed.
+
+Choose **Titan / Ligeia Mare**, **Moon / Shackleton Crater** or **Mars / Jezero Crater** on the welcome screen. The Moon has powered descent, rover rollout, textured crater terrain and solar/shadow differences. Mars has atmospheric entry, a parachute and powered sky-crane landing, followed by a five-stop science traverse. Both rovers use original eight-spoke wheel artwork with contained tread, shaded rims and brass hubs. Each world earns a local mission-artwork debrief after all five discoveries are transmitted. Older saves remain compatible. See `docs/MOON_MISSION.md` for physical assumptions, NASA sources and save compatibility. Sound is optional synthesized cockpit feedback; gentle animation suppresses camera shake and particle motion.
+
+1. Pick one of three rockets, a power source, multiple science tools and a radio. Start with 0 kg and 0 MC spent; stay within 300 mission coins. The free core explicitly consumes 10 W. Check the five-objective list or choose **Prepare a full-survey kit** before launching.
+2. Hold the launch button or Space. The Fly chapter shows an animated SVG transfer ellipse, moving target intercept, ideal coast time and delta-v. The 18-second transit can be skipped with **Skip to Landing**.
 3. Watch the aeroshell glow, the parachute inflate and Pip splash into the lake.
-4. Use the arrows or tap a lake-map marker to sail. Collect five discoveries, then radio them home.
+4. Use the arrows or tap a map marker to travel. Each research task requires an installed instrument. Yellow **Missing Tool** markers explain what to pack. **Repack and relaunch** preserves earned discoveries. Collect five, then radio them home to download a bundled authentic NASA image with credits and an original-record link.
 
 The flight timing and equipment numbers are illustrative game values.
 
@@ -52,7 +60,7 @@ Progress, settings and up to 20 mission reports are stored in this browser's loc
 ## Features
 
 - Original vector Titan landscapes, Saturn, spacecraft, rocket, parachute and assembly changes.
-- Three difficulties, three lake scenarios, four fictional rockets, five power options, eight science instruments, three radios and two options each for guidance, protection and landing.
+- Three difficulties, three lake scenarios, three fictional rockets, five power options, ten science instruments, three radios and two options each for guidance, protection and landing in the detailed engineering console. The simple adventure uses its own seven pictured tools, four power kits and three radios.
 - Complete build → validate → launch → travel → entry/descent → splashdown → science → results loop.
 - Mass accounting, budget enforcement, idle and active power, separate Wh battery capacity, fuel consumption, temperature model, atmospheric drag and heating, and buoyancy/stability checks.
 - Deterministic hazards with explained consequences. Fictional reliability ratings are shown but do not cause surprise dice-roll launch failures.

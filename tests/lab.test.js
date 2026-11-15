@@ -10,7 +10,7 @@ test('science goals require a suitable instrument and all checks before launch',
 });
 test('power trial detects a solar deficit and finite battery endurance',()=>{
   const s=newLab();s.loadout.power='solar';s.loadout.science='lab';assert.equal(powerTrial(s).passed,false);
-  s.loadout.power='battery';const t=powerTrial(s);assert.ok(t.passed);assert.equal(t.energyUsed,124);assert.equal(t.duration,600/62);
+  s.loadout.power='battery';const t=powerTrial(s);assert.ok(t.passed);assert.equal(t.energyUsed,114);assert.equal(t.duration,600/57);
 });
 test('radio selection changes downlink time and accounts for battery use',()=>{
   const s=newLab();s.loadout.power='battery';s.loadout.radio='whip';
@@ -23,4 +23,8 @@ test('saved tests are tied to their design and corrupt saved comparisons are dis
   s.loadout.radio='array';assert.equal(reviewed(restoreLab(s)),false);
   s.saved.loadout.power='unknown';assert.equal(restoreLab(s).saved,null);
   assert.deepEqual(restoreLab({version:1}),newLab());
+});
+test('old lab designs and saved comparisons both migrate the removed launcher',()=>{
+  const s=newLab();s.loadout.rocket='horizon';s.saved={goal:s.goal,loadout:{...s.loadout}};
+  const restored=restoreLab(s);assert.equal(restored.loadout.rocket,'titan');assert.equal(restored.saved.loadout.rocket,'titan');
 });
